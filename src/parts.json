@@ -4,15 +4,21 @@
   "unit": "guitar",
   "layer": "board",
   "colour": null,
-  "tris": 19050,
+  "order": 4,
+  "explode": [
+   0,
+   0,
+   -40
+  ],
+  "tris": 19095,
   "min": [
    74.46,
-   -13.69,
+   -15.7,
    -57.91
   ],
   "max": [
    145.94,
-   8.98,
+   7.52,
    -15.09
   ]
  },
@@ -21,15 +27,21 @@
   "unit": "guitar",
   "layer": "ring",
   "colour": null,
-  "tris": 5777,
+  "order": 8,
+  "explode": [
+   0,
+   0,
+   -30
+  ],
+  "tris": 5850,
   "min": [
    59.11,
-   -1.49,
-   -139.57
+   -3.89,
+   -139.58
   ],
   "max": [
-   103.5,
-   1.79,
+   103.51,
+   -0.61,
    -95.17
   ]
  },
@@ -80,15 +92,44 @@
   ]
  },
  {
-  "name": "G_Ply_bottom",
+  "name": "G_Pickups",
   "unit": "guitar",
-  "layer": "base",
-  "colour": "#33363a",
-  "tris": 9025,
+  "layer": "step0",
+  "colour": "#0f0f0f",
+  "order": 0,
+  "explode": [
+   0,
+   0,
+   0
+  ],
+  "tris": 1400,
+  "min": [
+   26.12,
+   -20,
+   -154.12
+  ],
+  "max": [
+   138.21,
+   8.5,
+   -79.6
+  ]
+ },
+ {
+  "name": "G_Plate_PlyBottom",
+  "unit": "guitar",
+  "layer": "step1",
+  "colour": "#2b2e33",
+  "order": 1,
+  "explode": [
+   0,
+   0,
+   0
+  ],
+  "tris": 37222,
   "min": [
    -6.66,
-   -6,
-   -189.61
+   -8.05,
+   -189.62
   ],
   "max": [
    190.13,
@@ -97,156 +138,325 @@
   ]
  },
  {
-  "name": "G_Ply_middle",
+  "name": "G_Plate_PlyMiddle",
   "unit": "guitar",
-  "layer": "base",
-  "colour": "#f26b14",
-  "tris": 4849,
+  "layer": "step1",
+  "colour": "#f06b14",
+  "order": 1,
+  "explode": [
+   0,
+   0,
+   0
+  ],
+  "tris": 28610,
   "min": [
    -6.55,
    1.6,
-   -184.22
+   -189.51
   ],
   "max": [
-   184.32,
+   190.03,
    2.2,
-   -9.38
+   -2.14
   ]
  },
  {
-  "name": "G_Ply_top",
+  "name": "G_Plate_PlyTop",
   "unit": "guitar",
-  "layer": "base",
-  "colour": "#33363a",
-  "tris": 9891,
+  "layer": "step1",
+  "colour": "#2b2e33",
+  "order": 1,
+  "explode": [
+   0,
+   0,
+   0
+  ],
+  "tris": 32818,
   "min": [
-   1.2,
+   -5.91,
    2.2,
-   -185.33
+   -188.91
   ],
   "max": [
    189.42,
    3,
-   -6.04
+   -2.74
   ]
  },
  {
-  "name": "G_Diffuser",
+  "name": "G_ButtonCap",
   "unit": "guitar",
-  "layer": "diffuser",
-  "colour": "#f4f2ec",
-  "tris": 1640,
+  "layer": "step2",
+  "colour": "#f06b14",
+  "order": 2,
+  "explode": [
+   0,
+   0,
+   -26
+  ],
+  "tris": 1474,
   "min": [
-   55.31,
-   -0.8,
-   -143.37
+   102.26,
+   -5,
+   -31.45
   ],
   "max": [
-   107.3,
-   3,
-   -91.38
+   110.66,
+   5.6,
+   -23.11
   ]
  },
  {
-  "name": "G_Bezel",
+  "name": "G_ControlFrame",
   "unit": "guitar",
-  "layer": "top",
-  "colour": "#33363a",
-  "tris": 1996,
+  "layer": "step3",
+  "colour": "#2b2e33",
+  "order": 3,
+  "explode": [
+   0,
+   0,
+   30
+  ],
+  "tris": 6496,
   "min": [
-   111.35,
+   72.09,
    3,
-   -50.07
+   -59.37
   ],
   "max": [
-   146.81,
-   6.92,
-   -14.68
+   147.15,
+   10.3,
+   -13.88
+  ]
+ },
+ {
+  "name": "G_Encoder_PEC12R",
+  "unit": "guitar",
+  "layer": "step4",
+  "colour": "#8c9199",
+  "order": 4,
+  "explode": [
+   0,
+   0,
+   -40
+  ],
+  "tris": 688,
+  "min": [
+   99.22,
+   -8.1,
+   -46.96
+  ],
+  "max": [
+   115.92,
+   6.9,
+   -30.27
+  ]
+ },
+ {
+  "name": "G_Button_B3SN",
+  "unit": "guitar",
+  "layer": "step4",
+  "colour": "#404045",
+  "order": 4,
+  "explode": [
+   0,
+   0,
+   -40
+  ],
+  "tris": 348,
+  "min": [
+   102.88,
+   -8.1,
+   -30.89
+  ],
+  "max": [
+   110.03,
+   -5,
+   -23.73
   ]
  },
  {
   "name": "G_Knob",
   "unit": "guitar",
-  "layer": "top",
-  "colour": "#f26b14",
-  "tris": 2670,
+  "layer": "step5",
+  "colour": "#f06b14",
+  "order": 5,
+  "explode": [
+   0,
+   0,
+   52
+  ],
+  "tris": 5144,
   "min": [
-   101.07,
+   101.37,
+   1,
+   -44.81
+  ],
+  "max": [
+   113.77,
+   14.2,
+   -32.41
+  ]
+ },
+ {
+  "name": "G_Switch_EG1201",
+  "unit": "guitar",
+  "layer": "step6",
+  "colour": "#595c61",
+  "order": 6,
+  "explode": [
+   0,
+   0,
+   -22
+  ],
+  "tris": 1748,
+  "min": [
+   86.5,
+   -8.5,
+   -83.9
+  ],
+  "max": [
+   105.5,
    4,
-   -45.11
-  ],
-  "max": [
-   114.07,
-   15.1,
-   -32.12
+   -78.1
   ]
  },
  {
-  "name": "G_Button_cap",
+  "name": "G_Diffuser",
   "unit": "guitar",
-  "layer": "cap",
-  "colour": "#f26b14",
-  "tris": 878,
+  "layer": "step7",
+  "colour": "#f2f0e6",
+  "order": 7,
+  "explode": [
+   0,
+   0,
+   -16
+  ],
+  "tris": 2458,
   "min": [
-   101.06,
-   -3,
-   -31.73
+   56.51,
+   -2.15,
+   -142.17
   ],
   "max": [
-   111.85,
-   5.8,
-   -21.91
-  ]
- },
- {
-  "name": "G_Tof_board",
-  "unit": "guitar",
-  "layer": "tof",
-  "colour": "#b8261f",
-  "tris": 540,
-  "min": [
-   67.44,
-   -9.8,
-   -131.25
-  ],
-  "max": [
-   95.18,
-   -8.2,
-   -103.5
-  ]
- },
- {
-  "name": "G_Tof_sensor",
-  "unit": "guitar",
-  "layer": "tof",
-  "colour": "#111111",
-  "tris": 36,
-  "min": [
-   68.83,
-   -8.2,
-   -121.55
-  ],
-  "max": [
-   93.8,
-   -5.3,
-   -113.2
+   106.11,
+   3,
+   -92.57
   ]
  },
  {
   "name": "G_Pod",
   "unit": "guitar",
-  "layer": "pod",
-  "colour": "#0d0d0d",
-  "tris": 6816,
+  "layer": "step9",
+  "colour": "#0d0d0e",
+  "order": 9,
+  "explode": [
+   0,
+   0,
+   -44
+  ],
+  "tris": 6854,
   "min": [
-   51.82,
-   -8.2,
-   -146.87
+   52.27,
+   -8.6,
+   -148.84
   ],
   "max": [
-   110.81,
+   107.58,
    3,
-   -87.88
+   -91.78
+  ]
+ },
+ {
+  "name": "G_ToF_Board",
+  "unit": "guitar",
+  "layer": "step10",
+  "colour": "#bf1a14",
+  "order": 10,
+  "explode": [
+   0,
+   0,
+   -58
+  ],
+  "tris": 740,
+  "min": [
+   67.44,
+   -10.2,
+   -131.25
+  ],
+  "max": [
+   95.18,
+   -5.7,
+   -103.5
+  ]
+ },
+ {
+  "name": "G_LiPo",
+  "unit": "guitar",
+  "layer": "step11",
+  "colour": "#9ea3ad",
+  "order": 11,
+  "explode": [
+   0,
+   0,
+   -78
+  ],
+  "tris": 348,
+  "min": [
+   62.08,
+   -16.9,
+   -133.46
+  ],
+  "max": [
+   100.54,
+   -12.15,
+   -101.29
+  ]
+ },
+ {
+  "name": "G_BatteryCradle",
+  "unit": "guitar",
+  "layer": "step12",
+  "colour": "#1f1f21",
+  "order": 12,
+  "explode": [
+   0,
+   0,
+   -88
+  ],
+  "tris": 3792,
+  "min": [
+   52.87,
+   -18.7,
+   -148.24
+  ],
+  "max": [
+   106.98,
+   -3.2,
+   -98.34
+  ]
+ },
+ {
+  "name": "G_Toggle",
+  "unit": "guitar",
+  "layer": "step13",
+  "colour": "#bfc2c7",
+  "order": 13,
+  "explode": [
+   0,
+   0,
+   24
+  ],
+  "tris": 684,
+  "min": [
+   57.5,
+   -12,
+   -157.5
+  ],
+  "max": [
+   70.5,
+   21,
+   -149.5
   ]
  },
  {
@@ -551,273 +761,273 @@
  {
   "name": "G_LED_0",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   88.92,
+   85.81,
    2.75,
-   -103.26
+   -101.76
   ],
   "max": [
-   93.12,
+   90.01,
    3.05,
-   -99.06
+   -97.56
   ]
  },
  {
   "name": "G_LED_1",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   94.39,
+   92.09,
    2.75,
-   -108.21
+   -105.64
   ],
   "max": [
-   98.59,
+   96.29,
    3.05,
-   -104.01
+   -101.44
   ]
  },
  {
   "name": "G_LED_2",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   97.54,
+   96.4,
    2.75,
-   -114.88
+   -111.62
   ],
   "max": [
-   101.74,
+   100.6,
    3.05,
-   -110.68
+   -107.42
   ]
  },
  {
   "name": "G_LED_3",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   97.91,
+   98.1,
    2.75,
-   -122.24
+   -118.79
   ],
   "max": [
-   102.11,
+   102.3,
    3.05,
-   -118.04
+   -114.59
   ]
  },
  {
   "name": "G_LED_4",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   95.43,
+   96.92,
    2.75,
-   -129.19
+   -126.07
   ],
   "max": [
-   99.63,
+   101.12,
    3.05,
-   -124.99
+   -121.87
   ]
  },
  {
   "name": "G_LED_5",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   90.47,
+   93.05,
    2.75,
-   -134.65
+   -132.35
   ],
   "max": [
-   94.67,
+   97.25,
    3.05,
-   -130.45
+   -128.15
   ]
  },
  {
   "name": "G_LED_6",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   83.81,
+   87.07,
    2.75,
-   -137.81
+   -136.66
   ],
   "max": [
-   88.01,
+   91.27,
    3.05,
-   -133.61
+   -132.46
   ]
  },
  {
   "name": "G_LED_7",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   76.44,
+   79.89,
    2.75,
-   -138.17
+   -138.36
   ],
   "max": [
-   80.64,
+   84.09,
    3.05,
-   -133.97
+   -134.16
   ]
  },
  {
   "name": "G_LED_8",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   69.5,
+   72.61,
    2.75,
-   -135.69
+   -137.18
   ],
   "max": [
-   73.7,
+   76.81,
    3.05,
-   -131.49
+   -132.98
   ]
  },
  {
   "name": "G_LED_9",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   64.03,
+   66.34,
    2.75,
-   -130.74
+   -133.31
   ],
   "max": [
-   68.23,
+   70.54,
    3.05,
-   -126.54
+   -129.11
   ]
  },
  {
   "name": "G_LED_10",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   60.88,
+   62.02,
    2.75,
-   -124.07
+   -127.33
   ],
   "max": [
-   65.08,
+   66.22,
    3.05,
-   -119.87
+   -123.13
   ]
  },
  {
   "name": "G_LED_11",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   60.52,
+   60.32,
    2.75,
-   -116.71
+   -120.16
   ],
   "max": [
-   64.72,
+   64.52,
    3.05,
-   -112.51
+   -115.96
   ]
  },
  {
   "name": "G_LED_12",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   63,
+   61.5,
    2.75,
-   -109.76
+   -112.88
   ],
   "max": [
-   67.2,
+   65.7,
    3.05,
-   -105.56
+   -108.68
   ]
  },
  {
   "name": "G_LED_13",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   67.95,
+   65.37,
    2.75,
-   -104.3
+   -106.6
   ],
   "max": [
-   72.15,
+   69.57,
    3.05,
-   -100.1
+   -102.4
   ]
  },
  {
   "name": "G_LED_14",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   74.61,
+   71.35,
    2.75,
-   -101.14
+   -102.28
   ],
   "max": [
-   78.81,
+   75.55,
    3.05,
-   -96.94
+   -98.09
   ]
  },
  {
   "name": "G_LED_15",
   "unit": "guitar",
-  "layer": "diffuser",
+  "layer": "step7",
   "colour": null,
   "tris": 96,
   "min": [
-   81.98,
+   78.53,
    2.75,
-   -100.78
+   -100.59
   ],
   "max": [
-   86.18,
+   82.73,
    3.05,
-   -96.58
+   -96.39
   ]
  },
  {

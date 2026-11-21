@@ -58,8 +58,8 @@ function receiverLayers() {
 receiverLayers();
 
 // the transmitter's electronics: the guitar board, the ring, the sensor, the knob, the cap, the pixels
-const ELECTRONICS = /^G_(Board|Ring|LED_)|^G_.*(tof|knob|button|sensor)/i;
-export type View = { units: Unit[]; tilt: number; yaw: number; zoom: number; lift?: number; focus?: RegExp; only?: RegExp };
+const ELECTRONICS = /^G_(Board|Ring|LED_)|^G_.*(tof|knob|button|sensor|encoder|switch)/i;
+export type View = { units: Unit[]; tilt: number; yaw: number; zoom: number; lift?: number; focus?: RegExp; only?: RegExp; ghost?: number };
 // tilt: pi/2 looks straight down; yaw 0: the receiver's front faces you
 export const VIEWS: Record<string, View> = {
   hero: { units: ["guitar", "receiver"], tilt: 0.62, yaw: -0.42, zoom: 1 },
@@ -71,8 +71,9 @@ export const VIEWS: Record<string, View> = {
   mode: { units: ["receiver"], tilt: 1.25, yaw: 0.2, zoom: 1.0 },
   lights: { units: ["guitar", "receiver"], tilt: 1.0, yaw: -0.55, zoom: 0.95 },
   inside: { units: ["receiver"], tilt: 0.5, yaw: -0.55, zoom: 0.95 },
-  // the guitar board up close: the screen, the knob, the button and the XIAO's USB-C on top
-  board: { units: ["guitar"], tilt: 0.72, yaw: -2.3, zoom: 1.3, focus: ELECTRONICS, only: ELECTRONICS },
+  // the guitar board up close: the screen, the knob, the button and the XIAO's USB-C on top,
+  // inside the faint outline of the Mustang it sits in
+  board: { units: ["guitar"], tilt: 0.72, yaw: -2.3, zoom: 1.0, focus: ELECTRONICS, only: ELECTRONICS, ghost: 0.6 },
   stack: { units: ["guitar"], tilt: 0.42, yaw: -1.5, zoom: 1.55 },
 };
 
@@ -508,7 +509,7 @@ export class ReinsScene extends HTMLElement {
     const fieldMoving = this.field?.update(dt) ?? false;
     // the guitar shows once the pickguard is together, and steps back while it is apart
     const gAsm = span(p, LAYERS.guitar.window[0] + 0.25, LAYERS.guitar.window[1] + 0.05);
-    this.guitarGhost.opacity = gAsm * (1 - this.explodeGNow) * this.unitAlpha.guitar * (tv.only ? 0 : 1);
+    this.guitarGhost.opacity = gAsm * (1 - this.explodeGNow) * this.unitAlpha.guitar * (tv.only ? tv.ghost ?? 0 : 1);
     this.guitarGhost.update(dt);
 
     // what the view frames, in world mm

@@ -21,7 +21,11 @@ if (!/neck/i.test(frameText) || !/bass/i.test(frameText))
   throw new Error(`pickguard-v2.mjs: check the frame against the pickguard frame (X to the neck, Y to the bass side): "${frameText}"`);
 
 const colour = (c) => (typeof c === 'string' ? c.toLowerCase() : '#33363a');
-const list = raw.parts ?? [];
+// the plate as its three colour plies, so the orange line shows in the bevel
+const plate = (raw.parts ?? []).find((p) => p.name === 'Plate');
+const plies = (raw.plate_plies ?? []).filter((q) => fs.existsSync(path.resolve(SRC, q.file)));
+const list = (raw.parts ?? []).flatMap((p) =>
+  p === plate && plies.length ? plies.map((q) => ({ ...p, name: q.file.replace(/\.stl$/, ''), file: q.file, color: q.color })) : [p]);
 const parts = list.map((p) => {
   const file = path.resolve(SRC, p.file ?? p.stl ?? `${p.name}.stl`);
   if (!fs.existsSync(file)) throw new Error(`pickguard-v2.mjs: ${file} is missing`);
@@ -34,8 +38,12 @@ const parts = list.map((p) => {
 const boards = raw.boards ?? [];
 const board = (re) => {
   const b = boards.find((x) => re.test(`${x.name} ${x.kicad ?? ''}`));
-  if (!b?.glb_to_frame_matrix_rowmajor) return undefined;
-  return { m: b.glb_to_frame_matrix_rowmajor, order: b.order, explode: b.explode ?? [0, 0, 0] };
+  // either a GLB (metres) to frame matrix, or a KiCad sheet (mm, y down) to frame matrix
+  const m = b?.glb_to_frame_matrix_rowmajor ?? b?.matrix_kicad_mm_to_frame_rowmajor;
+  if (!m) return undefined;
+  // module lifts ("M1 (XIAO)": 1.97) by reference, for the plug-in modules on sockets
+  const lift = Object.fromEntries(Object.entries(b.module_lift_mm ?? {}).map(([k, v]) => [k.split(' ')[0], v]));
+  return { m, kind: b.glb_to_frame_matrix_rowmajor ? 'glb' : 'kicad', lift, order: b.order, explode: b.explode ?? [0, 0, 0] };
 };
 const diffuser = list.find((p) => /diffuser/i.test(p.name));
 function stlTop(file) {
@@ -57,7 +65,7 @@ fs.writeFileSync(path.join(OUT, 'frame.json'), JSON.stringify(frame, null, 1) + 
 
 // the body outline: a key of parts.json, or a JSON file in the folder, a list of [x, y] in mm
 const guitar = JSON.parse(fs.readFileSync(MUSTANG, 'utf8'));
-const asList = (v) => (Array.isArray(v) && v.length > 8 && Array.isArray(v[0]) ? v : Array.isArray(v?.points) ? v.points : Array.isArray(v?.outline) ? v.outline : null);
+const asList = (v) => (Array.isArray(v) && v.length > 8 && Array.isArray(v[0]) ? v : Array.isArray(v?.closed_polyline) ? v.closed_polyline : Array.isArray(v?.points) ? v.points : Array.isArray(v?.outline) ? v.outline : null);
 let outline = null, from = '';
 for (const [k, v] of Object.entries(raw)) if (/outline|body/i.test(k) && asList(v)) (outline = asList(v)), (from = `parts.json ${k}`);
 if (!outline)

@@ -154,15 +154,17 @@ const steps = (b) => (b ? { order: b.order, explode: b.explode } : {});
 // The guitar boards: placed by build_pickguard.py's parameters, or, for a second pickguard
 // (pickguard-v2.mjs, frame.json), by its GLB to frame matrices. A board point p is (kx, -ky, h) mm.
 const gOver = fs.existsSync(path.join(GUITAR_DIR, 'frame.json')) ? JSON.parse(fs.readFileSync(path.join(GUITAR_DIR, 'frame.json'), 'utf8')) : {};
-const byMatrix = (M) => (p) => {
-  const g = [p[0] / 1000, p[2] / 1000, -p[1] / 1000]; // back to GLB metres
+const byMatrix = (o) => (p) => {
+  const M = o.m;
+  // back to GLB metres, or to the KiCad sheet (mm, y down; the GLBs are exported at origin 0, 0)
+  const g = o.kind === 'kicad' ? [p[0], -p[1], p[2]] : [p[0] / 1000, p[2] / 1000, -p[1] / 1000];
   return [0, 1, 2].map((r) => M[r][0] * g[0] + M[r][1] * g[1] + M[r][2] * g[2] + M[r][3]);
 };
 const podPlace = place(gf.pod.rot, [gf.pod.c[0], gf.pod.c[1], 0]);
 const ringV1 = (p) => podPlace(place(gf.pod.ringTurn, [0, 0, gf.pod.zRing])([p[0] - gf.pod.ringCentre[0], p[1] + gf.pod.ringCentre[1], p[2]]));
-const guitarMap = gOver.guitar ? byMatrix(gOver.guitar.m) : place(gf.board.theta, gf.board.t);
-const ringMap = gOver.ring ? byMatrix(gOver.ring.m) : ringV1;
-await board('G_Board', 'guitar.glb', guitarMap, 'guitar', 'board', 0.0016, {}, steps(gOver.guitar));
+const guitarMap = gOver.guitar ? byMatrix(gOver.guitar) : place(gf.board.theta, gf.board.t);
+const ringMap = gOver.ring ? byMatrix(gOver.ring) : ringV1;
+await board('G_Board', 'guitar.glb', guitarMap, 'guitar', 'board', 0.0016, gOver.guitar?.lift ?? {}, steps(gOver.guitar));
 await board('G_Ring', 'ring.glb', ringMap, 'guitar', 'ring', 0.002, {}, steps(gOver.ring));
 await board('R_Board', 'reins.glb', (p) => [p[0] + rb[0], p[1] + rb[1], p[2] + rb[2]], 'receiver', 'board', 0.0016,
   { J2: 1.905, J4: 1.905, M1: 1.955 }, steps(over.board), over.mask ? hex(over.mask) : null);
