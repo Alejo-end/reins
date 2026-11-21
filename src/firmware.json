@@ -1,0 +1,71 @@
+{
+  "guitar": {
+    "file": "tof_midi_v5",
+    "channel": 1,
+    "magic": 203,
+    "pollMs": 20,
+    "ema": 0.2,
+    "velDeadMm": 2,
+    "velMaxMm": 30,
+    "midiCh": 1,
+    "ccDist": 20,
+    "ccVel": 21,
+    "distMin": 10,
+    "distMax": 500,
+    "pixels": 16,
+    "stripBright": 76,
+    "mute": [
+      255,
+      0,
+      0
+    ],
+    "ramp": [
+      76,
+      255
+    ],
+    "flashVel": 100,
+    "breathMs": 2000,
+    "wipeMs": 150,
+    "batLowMv": 3450,
+    "sleepMs": 60000
+  },
+  "receiver": {
+    "file": "tof_midi_v6_rx",
+    "channel": 1,
+    "magic": 203,
+    "localCh": 2,
+    "ccDist": 22,
+    "ccVel": 23,
+    "distMin": 100,
+    "distMax": 1000,
+    "velFullMms": 500,
+    "velDeadMms": 5,
+    "emaDist": 0.3,
+    "emaVel": 0.2,
+    "zones": 64,
+    "hz": 15,
+    "noSignalMs": 1500,
+    "rxBuf": 64,
+    "expCc": 11,
+    "expMinSpan": 800,
+    "muteLatchMs": 1000,
+    "pairHoldMs": 1200,
+    "pixels": 8,
+    "brightness": 18,
+    "sources": [
+      "BOTH",
+      "GTR",
+      "LOC"
+    ],
+    "stick": {
+      "mute": [
+        40,
+        0,
+        0
+      ],
+      "linkMs": 700,
+      "idleMs": 2400,
+      "oledFailMs": 1500
+    }
+  }
+}

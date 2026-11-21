@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>REINS. A gesture MIDI controller for a guitar</title>
+    <meta name="description" content="A distance sensor in the pickguard turns the height of my hand into MIDI and sends it by radio to a box with USB, 5-pin DIN, a second sensor and pedal inputs." />
+    <meta name="theme-color" content="#1b1c1f" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content="REINS. A gesture MIDI controller for a guitar" />
+    <meta property="og:description" content="A sensor in the pickguard, a radio link, a receiver with USB and DIN MIDI, an expression pedal and two footswitches." />
+    <link rel="preload" href="model/reins.glb" as="fetch" crossorigin />
+  </head>
+  <body id="top">
+    <reins-scene aria-hidden="true"></reins-scene>
+
+    <header class="bar">
+      <a class="bar-mark" href="#top" aria-label="REINS, back to the top">REINS</a>
+      <nav class="bar-nav" aria-label="Sections">
+        <a href="#guitar">Guitar</a>
+        <a href="#link">Radio</a>
+        <a href="#receiver">Receiver</a>
+        <a href="#pedals">Pedals</a>
+        <a href="#lights">Lights</a>
+        <a href="#details">Details</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="stage" aria-label="REINS">
+        <div class="stage-sticky">
+          <div class="hero-copy">
+            <p class="eyebrow">two hands, two sensors</p>
+            <h1 class="wordmark">REINS</h1>
+            <p class="hero-title">A gesture MIDI controller for a guitar.</p>
+            <p class="lede">A distance sensor in the pickguard reads how high my hand is over the body. The guitar sends that as MIDI, by radio, to a small box on the floor. The box passes it on over USB and 5-pin DIN, and adds a second sensor, an expression pedal and two footswitches.</p>
+            <a class="cue" href="#guitar">scroll</a>
+          </div>
+          <p class="note note-on" id="stage-note"></p>
+        </div>
+      </section>
+
+      <section id="features" aria-label="How REINS works">
+        <article class="feature" data-view="guitar" data-side="left" id="guitar">
+          <p class="tag"><span class="idx">01</span>guitar side</p>
+          <h2>The pickguard</h2>
+          <p>A printed pickguard for a Squier Mustang. The sensor looks up through a ring of 16 LEDs between the pickups. The board under it carries a XIAO ESP32-S3, the screen, a knob and a mute button, and runs from a LiPo cell.</p>
+          <p id="guitar-fw"></p>
+          <div class="demo">
+            <div class="diagram-host" data-diagram="hand"></div>
+            <label class="range"><span>hand height</span><input type="range" min="0" max="600" step="1" value="240" data-hand aria-label="Hand height over the sensor, mm" /><output data-hand-out>240 mm</output></label>
+            <p class="readout" aria-live="polite" data-hand-read>&nbsp;</p>
+          </div>
+        </article>
+
+        <article class="feature feature-wide" data-view="link" data-side="0" data-scene="off" id="link">
+          <div class="wide-head">
+            <p class="tag"><span class="idx">02</span>radio</p>
+            <h2>The link</h2>
+            <p id="link-fw"></p>
+          </div>
+          <div class="demo demo-wide">
+            <div class="diagram-host" data-diagram="field"></div>
+            <div class="packet" data-packet aria-live="off"></div>
+            <p class="readout" data-link-read>&nbsp;</p>
+          </div>
+        </article>
+
+        <article class="feature" data-view="receiver" data-side="right" id="receiver">
+          <p class="tag"><span class="idx">03</span>receiver</p>
+          <h2>The box</h2>
+          <p id="receiver-fw"></p>
+          <div class="demo">
+            <div class="diagram-host" data-diagram="grid"></div>
+            <label class="range"><span>hand height</span><input type="range" min="0" max="1100" step="1" value="0" data-local aria-label="Hand height over the receiver's sensor, mm" /><output data-local-out>no hand</output></label>
+            <p class="readout" aria-live="polite" data-local-read>&nbsp;</p>
+          </div>
+        </article>
+
+        <article class="feature" data-view="back" data-side="left" id="pedals">
+          <p class="tag"><span class="idx">04</span>exp, midi out, foot</p>
+          <h2>Pedals</h2>
+          <p id="pedals-fw"></p>
+          <div class="demo">
+            <div class="diagram-host" data-diagram="pedal"></div>
+            <label class="range"><span>pedal</span><input type="range" min="0" max="4095" step="1" value="0" data-pedal aria-label="Expression pedal, heel to toe" /><output data-pedal-out>heel</output></label>
+            <div class="controls">
+              <button type="button" class="key-btn" data-mute aria-pressed="false">mute</button>
+              <button type="button" class="key-btn" data-hold aria-pressed="false">hold, press and keep down</button>
+              <button type="button" class="text-btn" data-pedal-reset>unplug the pedal</button>
+            </div>
+            <p class="readout" aria-live="polite" data-pedal-read>&nbsp;</p>
+          </div>
+        </article>
+
+        <article class="feature" data-view="mode" data-side="right" id="mode">
+          <p class="tag"><span class="idx">05</span>mode</p>
+          <h2>Sources</h2>
+          <p id="mode-fw"></p>
+          <div class="demo">
+            <div class="seg" role="radiogroup" aria-label="What the receiver sends on" data-sources></div>
+            <div class="diagram-host" data-diagram="routes"></div>
+          </div>
+        </article>
+
+        <article class="feature" data-view="lights" data-side="left" id="lights">
+          <p class="tag"><span class="idx">06</span>lights</p>
+          <h2>Lights</h2>
+          <p>Press a row to see it on the model.</p>
+          <div class="legend-pair">
+            <div><p class="legend-head">guitar, 16 LED ring</p><ul class="legend" data-legend="ring"></ul></div>
+            <div><p class="legend-head">receiver, 8 LED stick</p><ul class="legend" data-legend="stick"></ul></div>
+          </div>
+        </article>
+
+        <article class="feature feature-inside" data-view="inside" data-side="right" id="inside">
+          <p class="tag"><span class="idx">07</span>inside</p>
+          <h2>Inside the box</h2>
+          <p id="inside-fw"></p>
+          <ol class="layers" data-layers></ol>
+        </article>
+      </section>
+
+      <section id="details" class="wide" aria-labelledby="details-title">
+        <header class="sec-head">
+          <h2 id="details-title">Specifications</h2>
+        </header>
+        <dl class="spec" data-spec></dl>
+      </section>
+
+      <section id="end" class="wide">
+        <p class="end-line">The firmware and the guitar boards are on <a href="https://github.com/Alejo-end/midiguitar">GitHub</a>.</p>
+      </section>
+
+      <footer class="foot wide">
+        <p>Boards in KiCad, cases in FreeCAD. Page built with three.js, GSAP and Lenis, set in Nunito, the free cousin of the Arial Rounded on the lid. Built with Claude Code.</p>
+        <p class="made">made by <a href="https://alejandrodeleon.space">Alejandro</a></p>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
