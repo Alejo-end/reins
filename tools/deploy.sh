@@ -1,5 +1,6 @@
 #!/bin/bash
 # Builds the site for https://alejo-end.github.io/reins/ and publishes dist/ on the gh-pages
+# branch, which GitHub Pages serves.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 BASE=/reins/ npm run build
