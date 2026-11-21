@@ -24,6 +24,12 @@ BASE=/reins/ npm run build      # the static site in dist/, for GitHub Pages
 - `src/ghosts.ts`: the ghost hand and its light cone over the guitar's sensor, and the field
   on the table: the rings of the receiver lid (`heat/case/lid_art.py`) around both sensors,
   meeting halfway. A packet runs through them as a pulse.
+- `src/hand.ts`: the hand over the sensor, built from its bones: a palm, four fingers of three
+  phalanges with their knuckles, a thumb at its own angle, a relaxed curl. The page draws it
+  as light: a depth pass, then a soft edge.
+- `src/guitar.json`: the Squier Mustang around the pickguard: the body outline, the neck, the
+  headstock and the strings. The build copies it from `tools/mustang.json`, or takes the body
+  outline from the pickguard's own export. `tools/mustang.json` says where its numbers come from.
 - `src/reins.ts`: the firmware model. The guitar polls, smooths and sends CC as `tof_midi_v5`
   does. The receiver forwards, mutes, holds, learns the pedal range and lights its stick as
   `tof_midi_v6_rx` does.
@@ -47,6 +53,8 @@ The script stays out of this repository (`tools/private/`, git ignored). It does
 3. If `heat/case/v2/web/` exists, the receiver case comes from there. `tools/receiver-v2.mjs`
    reads its `parts.json`: colours, assembly order, explode vectors and board transforms.
    Without it, the parts come from `heat/case/receiver-assembly.step`.
+   In the same way, if `reins-guitar/pickguard/v2/web/` exists, `tools/pickguard-v2.mjs` reads
+   the pickguard from there, with the board transforms and a body outline if it has one.
 4. `tools/assemble.mjs` (glTF-Transform, in `tools/work/npm`) bakes each board into its unit's
    frame, simplifies it, adds the LED pucks and compresses everything (meshopt). About 0.7 MB.
 

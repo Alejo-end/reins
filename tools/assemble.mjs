@@ -35,6 +35,7 @@ import { MeshoptEncoder, MeshoptDecoder, MeshoptSimplifier } from 'meshoptimizer
 const [WORK, OUT, PARTS] = process.argv.slice(2);
 if (!WORK || !OUT || !PARTS) throw new Error('usage: assemble.mjs <work dir> <out.glb> <parts.json>');
 const RECEIVER_DIR = process.env.RECEIVER_DIR || path.join(WORK, 'cad/receiver');
+const GUITAR_DIR = process.env.GUITAR_DIR || path.join(WORK, 'cad/guitar');
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;
@@ -150,12 +151,19 @@ const rb = over.board?.t ?? [0, 0, 0];
 if (over.jack) rf.jack.t = over.jack.t;
 if (over.lidTop != null) rf.lidTop = over.lidTop;
 const steps = (b) => (b ? { order: b.order, explode: b.explode } : {});
+// The guitar boards: placed by build_pickguard.py's parameters, or, for a second pickguard
+// (pickguard-v2.mjs, frame.json), by its GLB to frame matrices. A board point p is (kx, -ky, h) mm.
+const gOver = fs.existsSync(path.join(GUITAR_DIR, 'frame.json')) ? JSON.parse(fs.readFileSync(path.join(GUITAR_DIR, 'frame.json'), 'utf8')) : {};
+const byMatrix = (M) => (p) => {
+  const g = [p[0] / 1000, p[2] / 1000, -p[1] / 1000]; // back to GLB metres
+  return [0, 1, 2].map((r) => M[r][0] * g[0] + M[r][1] * g[1] + M[r][2] * g[2] + M[r][3]);
+};
 const podPlace = place(gf.pod.rot, [gf.pod.c[0], gf.pod.c[1], 0]);
-await board('G_Board', 'guitar.glb', place(gf.board.theta, gf.board.t), 'guitar', 'board', 0.0016);
-await board('G_Ring', 'ring.glb', (p) => {
-  const q = place(gf.pod.ringTurn, [0, 0, gf.pod.zRing])([p[0] - gf.pod.ringCentre[0], p[1] + gf.pod.ringCentre[1], p[2]]);
-  return podPlace(q);
-}, 'guitar', 'ring', 0.002);
+const ringV1 = (p) => podPlace(place(gf.pod.ringTurn, [0, 0, gf.pod.zRing])([p[0] - gf.pod.ringCentre[0], p[1] + gf.pod.ringCentre[1], p[2]]));
+const guitarMap = gOver.guitar ? byMatrix(gOver.guitar.m) : place(gf.board.theta, gf.board.t);
+const ringMap = gOver.ring ? byMatrix(gOver.ring.m) : ringV1;
+await board('G_Board', 'guitar.glb', guitarMap, 'guitar', 'board', 0.0016, {}, steps(gOver.guitar));
+await board('G_Ring', 'ring.glb', ringMap, 'guitar', 'ring', 0.002, {}, steps(gOver.ring));
 await board('R_Board', 'reins.glb', (p) => [p[0] + rb[0], p[1] + rb[1], p[2] + rb[2]], 'receiver', 'board', 0.0016,
   { J2: 1.905, J4: 1.905, M1: 1.955 }, steps(over.board), over.mask ? hex(over.mask) : null);
 await board('R_Jack', 'reins-jack.glb', (p) => [p[0] + rf.jack.t[0], p[1] + rf.jack.t[1], p[2] + rf.jack.t[2]], 'receiver', 'jack', 0.002, {}, steps(over.jack), over.mask ? hex(over.mask) : null);
@@ -185,7 +193,7 @@ function printed(dir, prefix, unit) {
     parts.push({ name, unit, layer: p.layer, colour: p.colour, ...(p.order != null ? { order: p.order, explode: p.explode } : {}) });
   }
 }
-printed(path.join(WORK, 'cad/guitar'), 'G_', 'guitar');
+printed(GUITAR_DIR, 'G_', 'guitar');
 printed(RECEIVER_DIR, 'R_', 'receiver');
 
 // ---- 3. LED pucks ----------------------------------------------------------------------------
@@ -211,11 +219,16 @@ function puck(name, centre, shape, size, z, unit, layer) {
 }
 // the guitar ring: LED i at 11.25 + 22.5 i degrees from the pad row, radius 18.9 (make_ring.py),
 // counter clockwise seen from the top; on the diffuser's top face
+const ringTop = gOver.diffuserTop ?? gf.plateT;
 for (let i = 0; i < 16; i++) {
-  const a = rad(11.25 + 22.5 * i + gf.pod.ringTurn);
-  const c = podPlace([18.9 * Math.cos(a), 18.9 * Math.sin(a), 0]);
-  puck(`G_LED_${i}`, c, 'disc', 4.2, gf.plateT + 0.05, 'guitar', 'diffuser');
+  const a = rad(11.25 + 22.5 * i);
+  // the LED on the ring board, in KiCad mm (y down), placed like the board
+  const c = ringMap([100 + 18.9 * Math.cos(a), -(100 - 18.9 * Math.sin(a)), 0]);
+  puck(`G_LED_${i}`, c, 'disc', 4.2, ringTop + 0.05, 'guitar', gOver.diffuserLayer ?? 'diffuser');
 }
+// where the sensor looks from, for the page (the ghost hand, the field): the ring's centre
+const pod = ringMap([100, -100, 0]);
+fs.writeFileSync(path.join(path.dirname(PARTS), 'pod.json'), JSON.stringify({ x: +pod[0].toFixed(2), y: +pod[1].toFixed(2) }) + '\n');
 // the receiver stick: 8 pixels from neo_y0 at neo_pitch (build_case.py), under 5 mm windows
 for (let i = 0; i < 8; i++) {
   puck(`R_LED_${i}`, [rf.neo.x, -(rf.neo.y0 + i * rf.neo.pitch)], 'square', 4.4, rf.lidTop + 0.05, 'receiver', 'top');

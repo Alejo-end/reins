@@ -29,6 +29,7 @@ const words: Record<string, string> = {
   "link-fw": `The guitar broadcasts every message over ESP-NOW on WiFi channel ${G.channel}, in five bytes: 0x${hex(G.magic)}, a counter, then the MIDI message. Nothing connects and nothing waits for an answer. One way takes about 2 to 4 ms. The box drops anything that does not start with 0x${hex(R.magic)} and counts the gaps in the counter as lost packets. Held for ${sec(R.pairHoldMs)}, MODE pairs the box with the guitar it hears.`,
   "receiver-fw": `The box passes the guitar's messages to USB as a class compliant MIDI device, and to the 5-pin DIN socket, so a synth needs no computer. Its own sensor sees ${N} × ${N} zones ${R.hz} times a second. The nearest zone sets CC ${R.ccDist} and its speed CC ${R.ccVel}, on channel ${R.localCh}, so a host can tell the two hands apart.`,
   "pedals-fw": `Three sockets in the back wall: EXP, MIDI OUT and FOOT. A pedal on EXP sends CC ${R.expCc} on channel ${R.localCh}. It stays quiet until the pedal has moved ${Math.round((R.expMinSpan / 4095) * 100)} % of its travel, so an empty jack sends nothing. FOOT takes two footswitches on one TRS cable. The tip is MUTE, which also sends all notes off. The ring is HOLD: while it is down, the box's own CCs and the pedal keep their value. A latching switch held over ${sec(R.muteLatchMs)} toggles MUTE again when it opens, so one stomp is one toggle.`,
+  "stack-fw": "The pickguard is 3.0 mm thick, printed in three plies: charcoal, orange, charcoal. The bevel and the engraved rings cut through the top ply to the orange. Under it, in the order they go in:",
   "mode-fw": `A tap on MODE picks what goes out: both sensors, the guitar only or the box only. Each change sends all notes off on all 16 channels. The pedal passes in every mode.`,
   "inside-fw": `Two boards from JLCPCB in a printed case. The main board holds the XIAO ESP32-S3 Plus, the sensor, the screen, the knob, MODE, MUTE and the 8 LED stick. The jack board holds the three sockets and plugs in with a 7 pin JST PH cable. The list below is the order they go together in.`,
 };
@@ -90,7 +91,8 @@ ScrollTrigger.create({
     sceneOn();
   },
 });
-// the inside section takes the box apart as you read
+// the stack section takes the pickguard apart, the inside section the box
+ScrollTrigger.create({ trigger: "#stack", start: "top 75%", end: "bottom 60%", onUpdate: (st) => (scene.explodeGuitar = Math.sin(Math.PI * Math.min(1, st.progress * 1.25)) ** 0.6) });
 ScrollTrigger.create({ trigger: "#inside", start: "top 75%", end: "bottom 60%", onUpdate: (st) => (scene.explode = Math.sin(Math.PI * Math.min(1, st.progress * 1.25)) ** 0.6) });
 
 let current: HTMLElement | null = null;
@@ -290,6 +292,18 @@ if (box.some((p) => p.order != null)) {
   steps = ["base", "jack", "board", "caps", "lid", "top", "screws"].filter((l) => box.some((p) => p.layer === l)).map((l) => LAYER_WORDS[l]);
 }
 $("[data-layers]").innerHTML = steps.map((t) => `<li>${t}</li>`).join("");
+
+// ---- 03 the pickguard stack, in the order of the build (reins-guitar/pickguard/README.md) ----------
+const G_WORDS: Record<string, string> = {
+  Diffuser: "Diffuser, into the ring hole from below", Ring: "LED ring board, 16 LEDs, under the diffuser",
+  Pod: "Pod: it holds the ring and the sensor, three M2 screws", Tof_board: "Sensor board, screwed to the pod",
+  Button_cap: "Mute cap, from below", Board: "Guitar board, four M2 screws into the bosses", Bezel: "Screen bezel, four M2 screws", Knob: "Knob",
+};
+const gParts = parts.filter((p) => p.unit === "guitar" && !/_LED_|Ply|Tof_sensor/.test(p.name));
+const gOrder = gParts.some((p) => p.order != null)
+  ? [...gParts].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((p) => p.name.slice(2))
+  : ["Diffuser", "Ring", "Pod", "Tof_board", "Button_cap", "Board", "Bezel", "Knob"].filter((n) => gParts.some((p) => p.name === `G_${n}`));
+$("[data-stack]").innerHTML = gOrder.map((n) => `<li>${G_WORDS[n] ?? n.replace(/_/g, " ")}</li>`).join("");
 
 // ---- specifications: sizes from the model, numbers from the firmware -------------------------------
 const size = (pred: (p: P) => boolean) => {

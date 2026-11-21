@@ -53,12 +53,13 @@ export function handDiagram(host: HTMLElement) {
   // the cone the pod leaves open (pod.py, 14 degrees), and the hand
   const cone = mk("path", { class: "beam" }, el);
   const hand = mk("g", { class: "hand" }, el);
-  // a flat hand, palm down, from the side: wrist on the left, fingers to the right
+  // a relaxed hand, palm down, from the side: the wrist on the left, the knuckles, the fingers
+  // curling down at their two joints, the thumb under the palm
   mk("path", {
-    d: "M-84 -20C-62 -23 -34 -21 -12 -18C18 -15 48 -11 66 -8C76 -6 79 -1 72 1C50 1 26 0 4 0C-14 0 -32 1 -48 0C-62 -1 -74 -3 -84 -3",
+    d: "M-84 -14C-60 -18 -36 -22 -14 -22C-4 -22 4 -20 10 -17C20 -15 30 -14 40 -12C46 -11 50 -10 54 -7C60 -4 64 0 66 5C67 9 66 12 62 12C58 12 56 8 54 5C50 0 44 -2 36 -3C24 -4 12 -3 2 -1C-14 2 -34 2 -52 1C-66 0 -76 -2 -84 -2",
     class: "ink",
   }, hand);
-  mk("path", { d: "M-26 -1C-12 5 6 7 20 3", class: "ink" }, hand);
+  mk("path", { d: "M8 -17C9 -12 8 -6 5 -2M52 -8C51 -5 50 -2 47 0M-30 1C-20 8 -4 10 8 6", class: "ink thin" }, hand);
   const lead = mk("line", { x1: 44, x2: X - 64, class: "lead" }, el);
   const val = mk("text", { x: X + 84, class: "num" }, el);
   // the ring from above: 16 pixels, LED 1 just counter clockwise of the wire pads (make_ring.py)

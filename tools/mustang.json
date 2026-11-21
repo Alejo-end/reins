@@ -1,0 +1,11 @@
+{
+ "source": "Squier Mustang, drawn in the pickguard frame (X to the neck, Y to the bass side, Z = 0 on the body top, mm). Waist, cutaway, treble horn and the upper bouts traced from IMG_2407 as it is placed in cad-midiguitar.FCStd. The bass horn, the lower bouts and the tail are drawn to a Mustang's proportions: about 380 x 230 mm over the body. Scale 24 in (609.6 mm) from the saddles (X -8 in the photo) to the nut; the fretboard end at X 166 in the photo is fret 22 of that scale, which checks it. Nut 42 mm (Fender). Body 42 mm deep.",
+ "body": [[200,85],[186,76],[174,64],[168,50],[172,36],[184,26],[198,18],[210,10],[215,0],[211,-9],[200,-15],[182,-17],[160,-16],[140,-15],[121,-13],[108,-10],[95,-6],[83,-2],[70,1],[58,5],[45,8],[32,9],[19,8],[6,4],[-8,-4],[-22,-13],[-36,-22],[-52,-31],[-70,-37],[-88,-37],[-104,-30],[-115,-14],[-121,10],[-123,45],[-122,80],[-116,112],[-104,140],[-85,158],[-62,166],[-40,170],[-20,173],[0,176],[14,180],[28,185],[41,188],[55,190],[68,191],[94,191],[106,189],[119,186],[132,183],[144,179],[156,174],[169,168],[181,160],[193,151],[205,150],[220,158],[236,166],[248,166],[254,158],[250,149],[236,144],[218,142],[204,141]],
+ "depth": 42,
+ "saddleX": -8,
+ "scale": 609.6,
+ "strings": { "y": 117, "saddleSpread": 52, "nutSpread": 35, "zSaddle": 12, "zNut": 7.5 },
+ "neck": { "heelX": 130, "centreY": 113, "heelWidth": 56, "nutWidth": 42, "top": 6, "thick": 22 },
+ "headstock": [[0,21],[18,29],[60,33],[158,33],[178,27],[184,7],[176,-23],[158,-43],[133,-51],[108,-47],[88,-35],[58,-25],[23,-21],[0,-21]],
+ "tuners": { "y": 25, "x0": 40, "pitch": 24 }
+}

@@ -20,7 +20,9 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { toCreasedNormals } from "three/addons/utils/BufferGeometryUtils.js";
 import PARTS from "./parts.json";
 import type { Rgb } from "./reins";
-import { Hand, Field } from "./ghosts";
+import { Hand, Field, GuitarGhost, type GuitarShape } from "./ghosts";
+import GUITAR from "./guitar.json";
+import POD_AT from "./pod.json";
 
 type Unit = "guitar" | "receiver";
 type PartInfo = { name: string; unit: string; layer: string; colour: string | null; order?: number; explode?: number[]; min: number[]; max: number[] };
@@ -30,9 +32,9 @@ const INFO = new Map((PARTS as PartInfo[]).map((p) => [p.name, p]));
 const BOX_TOF = new THREE.Vector2(92.15, 104.54);
 const LID_GUITAR = new THREE.Vector2(168.0, 18.0);
 // the guitar's sensor in the pickguard frame (build_pickguard.py POD_C), on the body top
-const POD = new THREE.Vector2(81.312, 117.374);
+const POD = new THREE.Vector2(POD_AT.x, POD_AT.y); // the ring's centre, written with the model
 const SENSOR_Y = -7.2; // the sensor window, mm under the body top (Z_TOF_TOP + 1, pod.py)
-const LINK = 270; // mm from sensor to sensor on the table
+const LINK = 430; // mm from sensor to sensor on the table: the guitar's tail clears the box
 const GUITAR_LIFT = 16; // the guitar's body top over the table
 const GUITAR_YAW = 0.85; // radians: the neck points away from the receiver
 
@@ -55,7 +57,9 @@ function receiverLayers() {
 }
 receiverLayers();
 
-export type View = { units: Unit[]; tilt: number; yaw: number; zoom: number; lift?: number };
+// the transmitter's electronics: the guitar board, the ring, the sensor, the knob, the cap, the pixels
+const ELECTRONICS = /^G_(Board|Ring|LED_)|^G_.*(tof|knob|button|sensor)/i;
+export type View = { units: Unit[]; tilt: number; yaw: number; zoom: number; lift?: number; focus?: RegExp; only?: RegExp };
 // tilt: pi/2 looks straight down; yaw 0: the receiver's front faces you
 export const VIEWS: Record<string, View> = {
   hero: { units: ["guitar", "receiver"], tilt: 0.62, yaw: -0.42, zoom: 1 },
@@ -67,6 +71,9 @@ export const VIEWS: Record<string, View> = {
   mode: { units: ["receiver"], tilt: 1.25, yaw: 0.2, zoom: 1.0 },
   lights: { units: ["guitar", "receiver"], tilt: 1.0, yaw: -0.55, zoom: 0.95 },
   inside: { units: ["receiver"], tilt: 0.5, yaw: -0.55, zoom: 0.95 },
+  // the guitar board up close: the screen, the knob, the button and the XIAO's USB-C on top
+  board: { units: ["guitar"], tilt: 0.72, yaw: -2.3, zoom: 1.3, focus: ELECTRONICS, only: ELECTRONICS },
+  stack: { units: ["guitar"], tilt: 0.42, yaw: -1.5, zoom: 1.55 },
 };
 
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -103,10 +110,14 @@ export class ReinsScene extends HTMLElement {
   private byName = new Map<string, Part>();
   private ledMats: Record<"G" | "R", THREE.MeshBasicMaterial[]> = { G: [], R: [] };
   private glowMats: Record<"G" | "R", THREE.MeshBasicMaterial[]> = { G: [], R: [] };
-  private unitMats: Record<Unit, { m: THREE.Material; opacity: number; transparent: boolean }[]> = { guitar: [], receiver: [] };
+  private partMats = new Map<string, { m: THREE.Material; opacity: number; transparent: boolean }[]>();
+  private partAlpha = new Map<string, number>();
   private unitAlpha: Record<Unit, number> = { guitar: 1, receiver: 1 };
   private diffusers: Partial<Record<"G" | "R", THREE.MeshPhysicalMaterial>> = {};
   private handG = new Hand();
+  private guitarGhost = new GuitarGhost(GUITAR as GuitarShape);
+  private _explodeG = 0;
+  private explodeGNow = 0;
   private field!: Field;
   private _progress = 0;
   private _explode = 0;
@@ -154,6 +165,10 @@ export class ReinsScene extends HTMLElement {
   }
   set explode(v: number) {
     this._explode = clamp(v);
+  }
+  /** Takes the pickguard stack apart, for the section about it. */
+  set explodeGuitar(v: number) {
+    this._explodeG = clamp(v);
   }
   hand(mm: number | null) {
     if (mm == null) this.handG.opacity = 0;
@@ -246,7 +261,7 @@ export class ReinsScene extends HTMLElement {
     G.position.x += pod.x - podNow.x;
     G.position.z += pod.y - podNow.z;
     this.handG.group.position.set(POD.x, SENSOR_Y, -POD.y);
-    G.add(this.handG.group);
+    G.add(this.handG.group, this.guitarGhost.group);
     this.field = new Field(new THREE.Vector2(pod.x, pod.y), tof);
     this.world.add(this.field.mesh);
 
@@ -350,7 +365,6 @@ export class ReinsScene extends HTMLElement {
 
   private material(obj: THREE.Object3D, info: PartInfo) {
     const name = info.name;
-    const unit = info.unit as Unit;
     obj.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -387,7 +401,10 @@ export class ReinsScene extends HTMLElement {
         mesh.material = m;
       }
       const m = mesh.material as THREE.Material;
-      if (!/_LED_/.test(name)) this.unitMats[unit].push({ m, opacity: m.opacity, transparent: m.transparent });
+      if (!/_LED_/.test(name)) {
+        if (!this.partMats.has(name)) this.partMats.set(name, []);
+        this.partMats.get(name)!.push({ m, opacity: m.opacity, transparent: m.transparent });
+      }
     });
   }
 
@@ -462,6 +479,7 @@ export class ReinsScene extends HTMLElement {
     this.sideNow = ease(this.sideNow, this.sideTarget, 0.08);
     this.shiftNow = ease(this.shiftNow, this.shiftTarget, 0.08);
     this.explodeNow = ease(this.explodeNow, this._explode, 0.12);
+    this.explodeGNow = ease(this.explodeGNow, this._explodeG, 0.12);
 
     // parts: fly home in their windows; the receiver comes apart again with explode
     const boxes: Record<Unit, THREE.Box3> = { guitar: new THREE.Box3(), receiver: new THREE.Box3() };
@@ -471,10 +489,11 @@ export class ReinsScene extends HTMLElement {
       const [w0, w1] = part.window;
       let apart = part.offset.lengthSq() ? 1 - land(span(asm, w0, w1)) : 0;
       if (part.unit === "receiver") apart = Math.max(apart, easeInOut(this.explodeNow));
+      else apart = Math.max(apart, easeInOut(this.explodeGNow));
       part.obj.position.copy(part.home).addScaledVector(part.offset, apart);
       const turnK = apart * apart;
       part.obj.quaternion.setFromEuler(_e.set(part.jitter.x * turnK, part.jitter.y * turnK + part.spin * turnK, part.jitter.z * turnK));
-      if (!/_LED_/.test(part.name)) {
+      if (!/_LED_/.test(part.name) && (!tv.focus || tv.focus.test(part.name))) {
         _b.copy(part.box).translate(_v.copy(part.offset).multiplyScalar(apart));
         boxes[part.unit].union(_b);
       }
@@ -487,6 +506,10 @@ export class ReinsScene extends HTMLElement {
       boxes.guitar.expandByPoint(_v.set(POD.x - 60, top, -POD.y)).expandByPoint(_v.set(POD.x + 60, top, -POD.y));
     }
     const fieldMoving = this.field?.update(dt) ?? false;
+    // the guitar shows once the pickguard is together, and steps back while it is apart
+    const gAsm = span(p, LAYERS.guitar.window[0] + 0.25, LAYERS.guitar.window[1] + 0.05);
+    this.guitarGhost.opacity = gAsm * (1 - this.explodeGNow) * this.unitAlpha.guitar * (tv.only ? 0 : 1);
+    this.guitarGhost.update(dt);
 
     // what the view frames, in world mm
     const frameBox = new THREE.Box3();
@@ -536,20 +559,25 @@ export class ReinsScene extends HTMLElement {
     if (Math.abs(offX) > 0.5 || Math.abs(offY) > 0.5) this.camera.setViewOffset(w, h, offX, offY, w, h);
     else this.camera.clearViewOffset();
 
-    // a view of one unit fades the other
+    // a view of one unit fades the other; a view with `only` fades the rest of its unit too
     for (const u of ["guitar", "receiver"] as Unit[]) {
       const want = tv.units.includes(u) ? 1 : 0;
       const a0 = this.unitAlpha[u];
+      this.unitAlpha[u] = Math.abs(want - a0) < 0.004 ? want : ease(a0, want, 0.09);
+      this.units[u].visible = this.unitAlpha[u] > 0.01;
+    }
+    for (const part of this.parts) {
+      const want = (tv.units.includes(part.unit) ? 1 : 0) * (!tv.only || tv.only.test(part.name) ? 1 : 0);
+      const a0 = this.partAlpha.get(part.name) ?? 1;
       const a = Math.abs(want - a0) < 0.004 ? want : ease(a0, want, 0.09);
-      if (a !== a0) {
-        this.unitAlpha[u] = a;
-        for (const e of this.unitMats[u]) {
-          e.m.opacity = e.opacity * a;
-          const tr = e.transparent || a < 1;
-          if (e.m.transparent !== tr) (e.m.transparent = tr), (e.m.needsUpdate = true);
-        }
+      if (a === a0) continue;
+      this.partAlpha.set(part.name, a);
+      part.obj.visible = a > 0.01;
+      for (const e of this.partMats.get(part.name) ?? []) {
+        e.m.opacity = e.opacity * a;
+        const tr = e.transparent || a < 1;
+        if (e.m.transparent !== tr) (e.m.transparent = tr), (e.m.needsUpdate = true);
       }
-      this.units[u].visible = a > 0.01;
     }
 
     // the lights: the firmware's colours, at its brightness, lifted the way the eye reads a dim LED

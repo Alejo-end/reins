@@ -5,6 +5,7 @@
 // a pulse that runs out through the guitar's rings and in through the receiver's; the
 // receiver's own sensor sends a pulse out through its rings.
 import * as THREE from "three";
+import { handGeometry } from "./hand";
 
 const ORANGE = new THREE.Color(0xf26b14);
 const PALE = new THREE.Color(0xf4f2ec);
@@ -48,52 +49,70 @@ function ghost(fade: boolean, rim = PALE.clone().lerp(ORANGE, 0.25)) {
   });
 }
 
-/** A relaxed open hand, palm down, about 190 mm long, fingers along -z. Origin at the palm's centre. */
-function handGeometry() {
-  const parts: THREE.BufferGeometry[] = [];
-  const palm = new THREE.SphereGeometry(1, 40, 24);
-  palm.scale(42, 13, 50);
-  parts.push(palm);
-  // four fingers: x across the palm, length, a little curl down
-  const fingers: [number, number, number][] = [[-27, 62, 7.4], [-9, 72, 8], [9, 69, 7.8], [26, 56, 7]];
-  for (const [x, len, r] of fingers) {
-    const g = new THREE.CapsuleGeometry(r, len, 8, 20);
-    g.rotateX(Math.PI / 2 - 0.12);
-    g.translate(x * 1.05, -4, -44 - len / 2);
-    parts.push(g);
+// the hand: a soft fresnel edge and a faint body, drawn only where the hand's own front surface
+// is (a depth pass first), so the bones inside never show and the gaps between the fingers
+// read as lines
+const handVert = /* glsl */ `
+  attribute float aFade;
+  varying vec3 vN;
+  varying vec3 vV;
+  varying float vFade;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vN = normalize(normalMatrix * normal);
+    vV = -mv.xyz;
+    vFade = aFade;
+    gl_Position = projectionMatrix * mv;
   }
-  const thumb = new THREE.CapsuleGeometry(9, 44, 8, 20);
-  thumb.rotateX(Math.PI / 2);
-  thumb.rotateY(-0.85);
-  thumb.translate(-46, -6, -10);
-  parts.push(thumb);
-  // the wrist, fading off toward the player
-  const wrist = new THREE.CapsuleGeometry(24, 26, 8, 24);
-  wrist.rotateX(Math.PI / 2);
-  wrist.scale(1.15, 0.55, 1);
-  wrist.translate(0, 2, 56);
-  parts.push(wrist);
-  return parts;
-}
+`;
+const handFrag = /* glsl */ `
+  uniform vec3 uRim;
+  uniform float uOpacity;
+  varying vec3 vN;
+  varying vec3 vV;
+  varying float vFade;
+  void main() {
+    float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+    float edge = pow(f, 2.2) * 1.0 + pow(f, 1.2) * 0.12;
+    float a = uOpacity * vFade;
+    vec3 c = uRim * (0.06 + edge) * a;
+    gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+  }
+`;
 
 export class Hand {
   readonly group = new THREE.Group();
   private hand = new THREE.Group();
   private cone: THREE.Mesh;
-  private handMat = ghost(false);
+  private handMat = new THREE.ShaderMaterial({
+    vertexShader: handVert,
+    fragmentShader: handFrag,
+    uniforms: { uRim: { value: PALE.clone().lerp(ORANGE, 0.18) }, uOpacity: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    depthFunc: THREE.LessEqualDepth,
+    blending: THREE.AdditiveBlending,
+    premultipliedAlpha: true,
+  });
   private coneMat = ghost(true, ORANGE.clone().lerp(PALE, 0.2));
   private heightNow = 200;
   height = 200; // mm above the sensor window
   opacity = 0;
   private opNow = 0;
   constructor(private halfAngle = 14) {
-    for (const g of handGeometry()) this.hand.add(new THREE.Mesh(g, this.handMat));
+    const g = handGeometry();
+    const depth = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true, depthWrite: true }));
+    depth.renderOrder = 4;
+    const skin = new THREE.Mesh(g, this.handMat);
+    skin.renderOrder = 5;
+    this.hand.add(depth, skin);
     this.hand.rotation.y = -Math.PI / 2; // the fingers toward the neck
+    this.hand.rotation.z = 0.08; // a little roll, the way a hand hangs over the strings
     const cg = new THREE.CylinderGeometry(1, 0.08, 1, 48, 1, true);
     cg.translate(0, 0.5, 0);
     // radius 1 at the top (y = 1), a point at the sensor
     this.cone = new THREE.Mesh(cg, this.coneMat);
-    this.cone.renderOrder = 3;
+    this.cone.renderOrder = 2;
     this.group.add(this.hand, this.cone);
     this.group.visible = false;
   }
@@ -105,7 +124,7 @@ export class Hand {
     const o = this.opacity - this.opNow;
     this.opNow += o * k(0.12);
     const h = Math.max(8, this.heightNow);
-    this.hand.position.y = h + 13;
+    this.hand.position.y = h + 14; // the palm's underside at the height
     const r = h * Math.tan((this.halfAngle * Math.PI) / 180) + 2.6;
     this.cone.scale.set(r, h, r);
     this.handMat.uniforms.uOpacity.value = this.opNow;
@@ -241,5 +260,119 @@ export class Field {
     this.mesh.visible = this.opNow > 0.003;
     const pulses = [...this.mat.uniforms.uPG.value, ...this.mat.uniforms.uPB.value] as number[];
     return Math.abs(d) > 0.002 || pulses.some((p) => t - p < 1.4);
+  }
+}
+
+// ---- the guitar around the pickguard ------------------------------------------------------------
+// The Squier Mustang as light: the body, the neck, the headstock with its tuners and the six
+// strings, from src/guitar.json (the pickguard frame: X to the neck, Y to the bass side, Z = 0 on
+// the body top, mm). The build writes that file from the pickguard's own export when it has a
+// body outline, and from tools/mustang.json otherwise.
+export type GuitarShape = {
+  source: string;
+  body: [number, number][];
+  depth: number;
+  saddleX: number;
+  scale: number;
+  strings: { y: number; saddleSpread: number; nutSpread: number; zSaddle: number; zNut: number };
+  neck: { heelX: number; centreY: number; heelWidth: number; nutWidth: number; top: number; thick: number };
+  headstock: [number, number][];
+  tuners: { y: number; x0: number; pitch: number };
+};
+const edgeFrag = /* glsl */ `
+  uniform vec3 uRim;
+  uniform float uOpacity;
+  varying vec3 vN;
+  varying vec3 vV;
+  void main() {
+    float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+    float edge = pow(f, 2.6) * 0.9 + 0.03;
+    vec3 c = uRim * edge * uOpacity;
+    gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+  }
+`;
+const edgeVert = /* glsl */ `
+  varying vec3 vN;
+  varying vec3 vV;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vN = normalize(normalMatrix * normal);
+    vV = -mv.xyz;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+export class GuitarGhost {
+  readonly group = new THREE.Group();
+  private mats: { m: THREE.ShaderMaterial | THREE.LineBasicMaterial; k: number }[] = [];
+  opacity = 0;
+  private opNow = 0;
+  constructor(g: GuitarShape) {
+    const rim = PALE.clone().lerp(ORANGE, 0.3);
+    const solid = (k: number) => {
+      const m = new THREE.ShaderMaterial({
+        vertexShader: edgeVert, fragmentShader: edgeFrag,
+        uniforms: { uRim: { value: rim }, uOpacity: { value: 0 } },
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, premultipliedAlpha: true,
+      });
+      this.mats.push({ m, k });
+      return m;
+    };
+    const line = (k: number) => {
+      const m = new THREE.LineBasicMaterial({ color: rim, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      this.mats.push({ m, k });
+      return m;
+    };
+    // a flat shape in (X, Y), from Z = top - thick up to Z = top, into the unit's GLB frame
+    // (X, Z, -Y): (x, y, z) goes to (x, z + top - thick, -y), a rotation, so the faces keep their side
+    const slab = (pts: [number, number][], thick: number, top: number, k: number, bevel = 2) => {
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), {
+        depth: thick - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 4,
+      });
+      geo.translate(0, 0, bevel);
+      geo.applyMatrix4(new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, top - thick, 0, -1, 0, 0, 0, 0, 0, 1));
+      const mesh = new THREE.Mesh(geo, solid(k));
+      mesh.renderOrder = 1;
+      this.group.add(mesh);
+    };
+    const smooth = (pts: [number, number][]) =>
+      new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0)), true, "centripetal").getSpacedPoints(220).slice(0, -1).map((v) => [v.x, v.y] as [number, number]);
+    const body = smooth(g.body);
+    slab(body, g.depth, 0, 0.5, 3);
+    const top = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(body.map(([x, y]) => new THREE.Vector3(x, 0.3, -y))), line(0.35));
+    this.group.add(top);
+    // the neck, narrowing from the heel to the nut
+    const n = g.neck, nutX = g.saddleX + g.scale, c = n.centreY;
+    slab([[n.heelX, c - n.heelWidth / 2], [nutX, c - n.nutWidth / 2], [nutX, c + n.nutWidth / 2], [n.heelX, c + n.heelWidth / 2]], n.thick, n.top, 0.45, 2);
+    // the headstock, in mm from the nut and the neck's centre, a little below the fretboard
+    slab(g.headstock.map(([x, y]) => [nutX + x, c + y] as [number, number]), 14, n.top - 4, 0.4, 2);
+    const tunerAt: THREE.Vector3[] = [];
+    for (let i = 0; i < 6; i++) {
+      const x = nutX + g.tuners.x0 + i * g.tuners.pitch, y = c + g.tuners.y;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 12, 16), solid(0.5));
+      post.position.set(x, n.top + 2, -y);
+      this.group.add(post);
+      tunerAt.push(new THREE.Vector3(x, n.top + 5, -y));
+    }
+    // the strings: saddle to nut to the tuner post, low E on the bass side to the nearest post
+    const s = g.strings;
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i < 6; i++) {
+      const k = (i - 2.5) / 5; // +0.5 is low E (bass, +Y)
+      const a = new THREE.Vector3(g.saddleX, s.zSaddle, -(s.y - k * s.saddleSpread));
+      const b = new THREE.Vector3(nutX, s.zNut, -(c - k * s.nutSpread));
+      pts.push(a, b, b, tunerAt[i]);
+    }
+    this.group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), line(0.28)));
+    this.group.visible = false;
+  }
+  update(dt = 1 / 60) {
+    const d = this.opacity - this.opNow;
+    this.opNow += d * (1 - Math.pow(1 - 0.08, dt * 60));
+    for (const { m, k } of this.mats) {
+      if (m instanceof THREE.ShaderMaterial) m.uniforms.uOpacity.value = this.opNow * k;
+      else m.opacity = this.opNow * k;
+    }
+    this.group.visible = this.opNow > 0.004;
   }
 }
