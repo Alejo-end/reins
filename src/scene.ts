@@ -116,6 +116,8 @@ export class ReinsScene extends HTMLElement {
   private unitAlpha: Record<Unit, number> = { guitar: 1, receiver: 1 };
   private diffusers: Partial<Record<"G" | "R", THREE.MeshPhysicalMaterial>> = {};
   private handG = new Hand();
+  // the receiver's VL53L5CX sees about 45 degrees across: a wider cone
+  private handR = new Hand(22);
   private guitarGhost = new GuitarGhost(GUITAR as GuitarShape);
   private _explodeG = 0;
   private explodeGNow = 0;
@@ -176,6 +178,14 @@ export class ReinsScene extends HTMLElement {
     else {
       this.handG.opacity = 1;
       this.handG.height = mm;
+    }
+  }
+  /** The ghost hand over the receiver's sensor, mm, or null. Drawn up to 420 mm so the box stays in frame. */
+  handBox(mm: number | null) {
+    if (mm == null) this.handR.opacity = 0;
+    else {
+      this.handR.opacity = 1;
+      this.handR.height = Math.min(mm, 420);
     }
   }
   pulse(kind: "guitar" | "local") {
@@ -263,6 +273,11 @@ export class ReinsScene extends HTMLElement {
     G.position.z += pod.y - podNow.z;
     this.handG.group.position.set(POD.x, SENSOR_Y, -POD.y);
     G.add(this.handG.group, this.guitarGhost.group);
+    // the box's hand: over its sensor window, under the bezel
+    const bezel = INFO.get("R_Bezel_ToF");
+    this.handR.group.position.set(BOX_TOF.x, bezel ? bezel.min[1] : 17.8, BOX_TOF.y);
+    this.handR.group.rotation.y = 0; // the forearm away from the words
+    R.add(this.handR.group);
     this.field = new Field(new THREE.Vector2(pod.x, pod.y), tof);
     this.world.add(this.field.mesh);
 
@@ -505,6 +520,11 @@ export class ReinsScene extends HTMLElement {
     if (this.handG.opacity > 0) {
       const top = SENSOR_Y + this.handG.top;
       boxes.guitar.expandByPoint(_v.set(POD.x - 60, top, -POD.y)).expandByPoint(_v.set(POD.x + 60, top, -POD.y));
+    }
+    this.handR.update(dt);
+    if (this.handR.opacity > 0) {
+      const y = (INFO.get("R_Bezel_ToF")?.min[1] ?? 17.8) + this.handR.top;
+      boxes.receiver.expandByPoint(_v.set(BOX_TOF.x - 60, y, BOX_TOF.y)).expandByPoint(_v.set(BOX_TOF.x + 60, y, BOX_TOF.y));
     }
     const fieldMoving = this.field?.update(dt) ?? false;
     // the guitar shows once the pickguard is together, and steps back while it is apart

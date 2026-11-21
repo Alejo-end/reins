@@ -111,6 +111,7 @@ const io = new IntersectionObserver(
       // the ghost hand belongs to the guitar's sections
       const handHere = el.id === "guitar" || el.id === "link";
       scene.hand(handHere ? reins.hand : null);
+      scene.handBox(el.id === "receiver" ? reins.local : null);
       scene.fieldOn = el.id === "inside" ? 0 : 1;
       // a centred section draws its own picture: the scene steps back
       document.documentElement.classList.toggle("scene-off", el.dataset.scene === "off");
@@ -178,7 +179,18 @@ localIn.addEventListener("input", () => {
   const on = mm >= 30;
   localOut.textContent = on ? `${mm} mm` : "no hand";
   reins.setLocal(on ? mm : null);
+  scene.handBox(on ? mm : null);
 });
+// the first visit brings a hand over the box, as the guitar's section does
+$("#receiver").addEventListener(
+  "pointerenter",
+  () => {
+    if (reins.local != null) return;
+    localIn.value = "180";
+    localIn.dispatchEvent(new Event("input"));
+  },
+  { once: true },
+);
 
 // ---- 04 pedal, MUTE, HOLD ---------------------------------------------------------------------------
 const drawPedal = pedalDiagram($("[data-diagram=pedal]"));
