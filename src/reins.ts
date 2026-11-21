@@ -84,7 +84,7 @@ export class Reins extends EventTarget {
     const passed = src !== "LOC" && !this.muted;
     this.lastRx = performance.now();
     this.received++;
-    const note = src === "LOC" ? "Received, not sent on: MODE is LOC." : this.muted ? "Received, not sent on: muted." : "Sent on to USB and DIN.";
+    const note = src === "LOC" ? "received, held back: MODE is LOC." : this.muted ? "received, held back: muted." : "sent on to usb and din.";
     this.emit({ bytes: [G.magic, seq, status, cc, v], seq, from: "guitar", passed, note });
     this.changed();
   }
