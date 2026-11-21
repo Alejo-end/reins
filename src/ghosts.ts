@@ -270,14 +270,18 @@ export class Field {
 // body outline, and from tools/mustang.json otherwise.
 export type GuitarShape = {
   source: string;
+  // how tools/mustang.json placed the body: model, scale, turn, shift, fit error
+  bodyFit?: { model: string; scale_mm_per_unit: number; rotation_deg: number; translate_mm: number[]; rms_mm: number };
   body: [number, number][];
   depth: number;
   saddleX: number;
   scale: number;
   strings: { y: number; saddleSpread: number; nutSpread: number; zSaddle: number; zNut: number };
-  neck: { heelX: number; centreY: number; heelWidth: number; nutWidth: number; top: number; thick: number };
+  // centreY is the neck's centre at the nut, heelCentreY at the heel (the neck may run a little off X)
+  neck: { heelX: number; centreY: number; heelCentreY?: number; heelWidth: number; nutWidth: number; top: number; thick: number };
   headstock: [number, number][];
-  tuners: { y: number; x0: number; pitch: number };
+  // post i from the nut: (x0 + i pitch, y + i dy) from the nut centre; the low E post is nearest
+  tuners: { y: number; x0: number; pitch: number; dy?: number };
 };
 const edgeFrag = /* glsl */ `
   uniform vec3 uRim;
@@ -336,19 +340,19 @@ export class GuitarGhost {
       this.group.add(mesh);
     };
     const smooth = (pts: [number, number][]) =>
-      new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0)), true, "centripetal").getSpacedPoints(220).slice(0, -1).map((v) => [v.x, v.y] as [number, number]);
+      new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0)), true, "centripetal").getSpacedPoints(400).slice(0, -1).map((v) => [v.x, v.y] as [number, number]);
     const body = smooth(g.body);
     slab(body, g.depth, 0, 0.5, 3);
     const top = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(body.map(([x, y]) => new THREE.Vector3(x, 0.3, -y))), line(0.35));
     this.group.add(top);
     // the neck, narrowing from the heel to the nut
-    const n = g.neck, nutX = g.saddleX + g.scale, c = n.centreY;
-    slab([[n.heelX, c - n.heelWidth / 2], [nutX, c - n.nutWidth / 2], [nutX, c + n.nutWidth / 2], [n.heelX, c + n.heelWidth / 2]], n.thick, n.top, 0.45, 2);
+    const n = g.neck, nutX = g.saddleX + g.scale, c = n.centreY, ch = n.heelCentreY ?? c;
+    slab([[n.heelX, ch - n.heelWidth / 2], [nutX, c - n.nutWidth / 2], [nutX, c + n.nutWidth / 2], [n.heelX, ch + n.heelWidth / 2]], n.thick, n.top, 0.45, 2);
     // the headstock, in mm from the nut and the neck's centre, a little below the fretboard
     slab(g.headstock.map(([x, y]) => [nutX + x, c + y] as [number, number]), 14, n.top - 4, 0.4, 2);
     const tunerAt: THREE.Vector3[] = [];
     for (let i = 0; i < 6; i++) {
-      const x = nutX + g.tuners.x0 + i * g.tuners.pitch, y = c + g.tuners.y;
+      const x = nutX + g.tuners.x0 + i * g.tuners.pitch, y = c + g.tuners.y + i * (g.tuners.dy ?? 0);
       const post = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 12, 16), solid(0.5));
       post.position.set(x, n.top + 2, -y);
       this.group.add(post);
@@ -358,7 +362,7 @@ export class GuitarGhost {
     const s = g.strings;
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i < 6; i++) {
-      const k = (i - 2.5) / 5; // +0.5 is low E (bass, +Y)
+      const k = (i - 2.5) / 5; // -0.5 is the low E (bass, +Y), on post 0 next to the nut
       const a = new THREE.Vector3(g.saddleX, s.zSaddle, -(s.y - k * s.saddleSpread));
       const b = new THREE.Vector3(nutX, s.zNut, -(c - k * s.nutSpread));
       pts.push(a, b, b, tunerAt[i]);

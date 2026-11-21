@@ -8,8 +8,8 @@
 // ring board, and maybe a body outline of the Mustang in the same frame. The frame must be the
 // pickguard frame of build_pickguard.py (X to the neck, Y to the bass side, Z = 0 on the body
 // top, mm): the page puts the hand and the guitar in it.
-// Writes <out dir>/parts.json, <out dir>/frame.json, and src/guitar.json (tools/mustang.json
-// with the body outline of the export when it has one).
+// Writes <out dir>/parts.json, <out dir>/frame.json, and src/guitar.json (tools/mustang.json; its
+// body is replaced by the body outline of the export only when mustang.json has no "bodyFit").
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -73,10 +73,25 @@ if (!outline)
     const v = asList(JSON.parse(fs.readFileSync(path.join(SRC, f), 'utf8')));
     if (v) (outline = v), (from = f);
   }
-if (outline) {
+// tools/mustang.json wins when its body is a full Mustang outline fitted to the photo traces
+// ("bodyFit"): the export traces only the treble edge and guesses the bass side and the butt end.
+// Then the export outline is only a check: how far its points are from the fitted body.
+const keep = Boolean(guitar.bodyFit) && Array.isArray(guitar.body) && guitar.body.length > 8;
+let check = '';
+if (outline && keep) {
+  const segDist = (p, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy;
+    const t = l ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l)) : 0;
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  };
+  const b = guitar.body;
+  const d = outline.map((p) => Math.min(...b.map((a, i) => segDist(p, a, b[(i + 1) % b.length]))));
+  const med = [...d].sort((x, y) => x - y)[Math.floor(d.length / 2)];
+  check = `, the export outline (${from}) is a median ${med.toFixed(1)} mm from it`;
+} else if (outline) {
   guitar.body = outline.map((p) => [+p[0], +p[1]]);
   guitar.source = `Body outline from the pickguard export (${from}). ${guitar.source}`;
 }
 fs.writeFileSync(GUITAR, JSON.stringify(guitar) + '\n');
-console.log(`pickguard v2: ${parts.length} parts, body outline ${outline ? `from ${from}, ${outline.length} points` : 'from tools/mustang.json'}`);
+console.log(`pickguard v2: ${parts.length} parts, body outline ${outline && !keep ? `from ${from}, ${outline.length} points` : `from tools/mustang.json${check}`}`);
 for (const p of parts) console.log(`  ${String(p.order).padStart(3)} ${p.colour} ${p.name}  explode ${p.explode.join(' ')}`);
