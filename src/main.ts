@@ -52,7 +52,7 @@ if (!reduce) {
 
 // ---- the stage: apart, together, linked -----------------------------------------------------------
 const note = $("#stage-note");
-note.textContent = `Radio on channel ${G.channel}.`;
+note.textContent = "No cable to the guitar.";
 let stageHand = false;
 const stage = (p: number) => {
   scene.progress = p;
