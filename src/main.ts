@@ -307,7 +307,8 @@ $("[data-layers]").innerHTML = steps.map((t) => `<li>${t}</li>`).join("");
 
 // ---- 03 the pickguard stack, in the order of the build (reins-guitar/pickguard/README.md) ----------
 const G_WORDS: Record<string, string> = {
-  ButtonCap: "Mute cap, held from below the plate", ControlFrame: "Frame: screen bezel and XIAO hood in one part",
+  ButtonCap: "Mute cap, held from below the plate", ControlFrame: "Frame: plinth and screen bezel", Hood: "XIAO hood, its USB-C port open at the bottom", BoardSpacers: "Four spacers between the board and the plate",
+  PodBase: "Pod base: it holds the sensor board",
   Board: "Guitar board, four M2 screws from below into the frame", Encoder_PEC12R: "Knob encoder", Button_B3SN: "Mute button",
   Knob: "Knob, pressed onto the shaft", Switch_EG1201: "Battery switch", Diffuser: "Diffuser over the ring",
   Ring: "LED ring board, 16 LEDs", Pod: "Pod: it holds the ring and the sensor", ToF_Board: "Sensor board, VL53L1X",
