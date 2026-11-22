@@ -311,6 +311,8 @@ $("[data-layers]").innerHTML = steps.map((t) => `<li>${low(t)}</li>`).join("");
 const G_WORDS: Record<string, string> = {
   ButtonCap: "Mute cap, held from below the plate", OLED: "Screen module, on the plate, its pins through into the board", ControlFrame: "Frame: plinth and screen bezel", Hood: "XIAO hood, its USB-C port open at the bottom", BoardSpacers: "Four spacers between the board and the plate",
   PodBase: "Pod base: it holds the sensor board",
+  SlideSwitches: "Two Mustang slide switches, one per pickup: in phase, off, reversed", SlideCaps: "Orange caps on the slide switches",
+  SlideScrews: "Slide switch screws", GuardScrews: "Black pickguard screws", PickupScrews: "Pickup screws",
   Board: "Guitar board, four M2 screws from below into the frame", Encoder_PEC12R: "Knob encoder", Button_B3SN: "Mute button",
   Knob: "Knob, pressed onto the shaft", Switch_EG1201: "Battery switch", Diffuser: "Diffuser over the ring",
   Ring: "Led ring board, 16 leds", Pod: "Pod: it holds the ring and the sensor", ToF_Board: "Sensor board, VL53L1X",
