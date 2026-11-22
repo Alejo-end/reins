@@ -20,7 +20,9 @@
 // What it does:
 //  1. Each board becomes one node: its parts lose their names, the placement is baked into the
 //     vertices, and each material's triangles are welded and simplified. Normals go: the page
-//     computes creased normals, which also keeps the simplifier free of normal seams.
+//     computes creased normals, which also keeps the simplifier free of normal seams. A component
+//     can leave the board: the guitar's OLED module becomes G_OLED, and the KiCad models of the
+//     encoder and the switch go when the pickguard export has them as STLs (pickguard-v2.mjs).
 //  2. The printed parts come in as named nodes, welded, without normals.
 //  3. LED pucks: one thin emissive disc or square per pixel on the diffusers, which the page lights.
 //  4. Each node's origin goes to the centre of its box. Node names start with G_ (guitar) or R_.
@@ -97,15 +99,23 @@ function prim(positions, mat, simplifyError = 0) {
 // lift: mm to raise the parts under a named top level node. The KiCad models of the plug-in
 // modules on the receiver sit low: their sockets are 6.6 mm in the models, 8.5 mm on the board
 // (heat/case/v2/web/parts.json, module_heights).
-async function boardTriangles(file, map, lift = {}) {
+// route: a named top level node goes to a part of its own ({ J4: 'OLED' }) or nowhere ({ S1: null }).
+// Returns the groups of each part: '' is the board itself.
+async function boardTriangles(file, map, lift = {}, route = {}) {
   const src = await io.read(file);
-  const groups = new Map();
+  const parts = new Map([['', new Map()]]);
   for (const n of src.getRoot().listNodes()) {
     const mesh = n.getMesh();
     if (!mesh) continue;
     const m = n.getWorldMatrix();
-    let up = 0;
-    for (let a = n; a; a = a.getParentNode()) if (lift[a.getName()] != null) up = lift[a.getName()];
+    let up = 0, to = '';
+    for (let a = n; a; a = a.getParentNode()) {
+      if (lift[a.getName()] != null) up = lift[a.getName()];
+      if (a.getName() in route) to = route[a.getName()];
+    }
+    if (to === null) continue;
+    if (!parts.has(to)) parts.set(to, new Map());
+    const groups = parts.get(to);
     for (const p of mesh.listPrimitives()) {
       const mat = p.getMaterial();
       const rgba = mat ? mat.getBaseColorFactor() : [0.5, 0.5, 0.5, 1];
@@ -123,25 +133,30 @@ async function boardTriangles(file, map, lift = {}) {
       }
     }
   }
-  return groups;
+  return parts;
 }
 // mask: a colour for the solder mask, which kicad-cli writes in KiCad's default green
-async function board(name, file, map, unit, layer, error, lift, extra = {}, mask = null) {
-  const groups = await boardTriangles(path.join(WORK, 'kicad', file), map, lift);
-  const prims = [];
-  let before = 0;
-  for (const g of groups.values()) {
-    const [r, gr, b] = g.rgba;
-    if (mask && gr > r * 1.5 && gr > b && gr < 0.4) g.rgba = mask;
-    before += g.pos.length / 9;
-    // the silkscreen is small type: it keeps its shape (white, flat, thin)
-    const silk = g.rgba[0] > 0.9 && g.rgba[1] > 0.9 && g.rgba[2] > 0.9;
-    prims.push(prim(g.pos, material(g.rgba, g.metal, g.rough), silk ? error * 0.15 : error));
+// route: see boardTriangles; a part split off is named after the board's unit prefix (G_OLED)
+async function board(name, file, map, unit, layer, error, lift, extra = {}, mask = null, route = {}) {
+  const split = await boardTriangles(path.join(WORK, 'kicad', file), map, lift, route);
+  for (const [to, groups] of split) {
+    const prims = [];
+    let before = 0;
+    for (const g of groups.values()) {
+      const [r, gr, b] = g.rgba;
+      if (mask && gr > r * 1.5 && gr > b && gr < 0.4) g.rgba = mask;
+      before += g.pos.length / 9;
+      // the silkscreen is small type: it keeps its shape (white, flat, thin)
+      const silk = g.rgba[0] > 0.9 && g.rgba[1] > 0.9 && g.rgba[2] > 0.9;
+      prims.push(prim(g.pos, material(g.rgba, g.metal, g.rough), silk ? error * 0.15 : error));
+    }
+    const part = to ? `${name.split('_')[0]}_${to}` : name;
+    nodeWith(part, prims);
+    parts.push({ name: part, unit, layer, colour: null, ...(to ? {} : extra) });
+    console.log(`${part}: ${before} triangles in, ${groups.size} materials`);
   }
-  const node = nodeWith(name, prims);
-  parts.push({ name, unit, layer, colour: null, ...extra });
-  console.log(`${name}: ${before} triangles in, ${groups.size} materials`);
-  return node;
+  const gone = Object.keys(route).filter((k) => route[k] === null);
+  if (gone.length) console.log(`${name}: left out ${gone.join(', ')} (the model has them as parts of their own)`);
 }
 
 const gf = frames.guitar, rf = frames.receiver;
@@ -164,7 +179,8 @@ const podPlace = place(gf.pod.rot, [gf.pod.c[0], gf.pod.c[1], 0]);
 const ringV1 = (p) => podPlace(place(gf.pod.ringTurn, [0, 0, gf.pod.zRing])([p[0] - gf.pod.ringCentre[0], p[1] + gf.pod.ringCentre[1], p[2]]));
 const guitarMap = gOver.guitar ? byMatrix(gOver.guitar) : place(gf.board.theta, gf.board.t);
 const ringMap = gOver.ring ? byMatrix(gOver.ring) : ringV1;
-await board('G_Board', 'guitar.glb', guitarMap, 'guitar', 'board', 0.0016, gOver.guitar?.lift ?? {}, steps(gOver.guitar));
+const gRoute = { ...gOver.guitar?.split, ...Object.fromEntries((gOver.guitar?.hide ?? []).map((k) => [k, null])) };
+await board('G_Board', 'guitar.glb', guitarMap, 'guitar', 'board', 0.0016, gOver.guitar?.lift ?? {}, steps(gOver.guitar), null, gRoute);
 await board('G_Ring', 'ring.glb', ringMap, 'guitar', 'ring', 0.002, {}, steps(gOver.ring));
 await board('R_Board', 'reins.glb', (p) => [p[0] + rb[0], p[1] + rb[1], p[2] + rb[2]], 'receiver', 'board', 0.0016,
   { J2: 1.905, J4: 1.905, M1: 1.955 }, steps(over.board), over.mask ? hex(over.mask) : null);

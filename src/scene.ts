@@ -4,6 +4,11 @@
 //   scene.view = name       turns and frames the scene for one section (VIEWS below)
 //   scene.side = -1, 0, 1   where the words are: the units keep the other half (desktop) or the top (phone)
 //   scene.explode = 0..1    takes the receiver apart again, for the section about its inside
+//   scene.explodeGuitar     the same for the pickguard
+//
+// How the parts move, together and apart, is src/motion.ts with the plan of tools/explode.mjs
+// (parts.json): the real build, in its order, each part along its own way in, never through
+// another part.
 //   scene.hand(mm | null)   the ghost hand over the guitar's sensor
 //   scene.pulse(kind)       a pulse in the field: a packet from the guitar, or the receiver's own sensor
 //   scene.ring / stick      the colour of each pixel now (the firmware model in reins.ts)
@@ -23,9 +28,10 @@ import type { Rgb } from "./reins";
 import { Hand, Field, GuitarGhost, type GuitarShape } from "./ghosts";
 import GUITAR from "./guitar.json";
 import POD_AT from "./pod.json";
+import { makePlan, poses, STAGE, type Plan, type Pose, type Step } from "./motion";
 
 type Unit = "guitar" | "receiver";
-type PartInfo = { name: string; unit: string; layer: string; colour: string | null; order?: number; explode?: number[]; min: number[]; max: number[] };
+type PartInfo = { name: string; unit: string; layer: string; colour: string | null; order?: number; min: number[]; max: number[] } & Partial<Omit<Step, "name">>;
 const INFO = new Map((PARTS as PartInfo[]).map((p) => [p.name, p]));
 
 // the receiver's sensor and the lid art's guitar point, KiCad mm (build_case.py, lid_art.py)
@@ -38,27 +44,16 @@ const LINK = 430; // mm from sensor to sensor on the table: the guitar's tail cl
 const GUITAR_LIFT = 16; // the guitar's body top over the table
 const GUITAR_YAW = 0.85; // radians: the neck points away from the receiver
 
-// how each unit comes apart: the layers in the order they go together, outward from the base
-const LAYERS: Record<Unit, { base: string; above: string[]; below: string[]; gap: number; window: [number, number] }> = {
-  guitar: { base: "base", above: ["top"], below: ["diffuser", "cap", "ring", "pod", "tof", "board"], gap: 14, window: [0.04, 0.44] },
-  receiver: { base: "base", above: ["jack", "board", "caps", "lid", "top"], below: ["screws"], gap: 11, window: [0.38, 0.78] },
-};
-// a case from heat/case/v2/web names its layers step<order> and below<order> (receiver-v2.mjs)
-function receiverLayers() {
-  const names = [...new Set([...INFO.values()].filter((p) => p.unit === "receiver").map((p) => p.layer))];
-  if (!names.some((n) => /^step\d+$/.test(n))) return;
-  const num = (n: string) => Number(n.replace(/\D/g, ""));
-  const steps = names.filter((n) => n.startsWith("step")).sort((a, b) => num(a) - num(b));
-  const L = LAYERS.receiver;
-  L.base = steps[0];
-  // the boards go in on the base, then the rest in its order
-  L.above = ["jack", "board", ...steps.slice(1)];
-  L.below = names.filter((n) => n.startsWith("below")).sort((a, b) => num(a) - num(b));
-}
-receiverLayers();
+// the plan of each unit (tools/explode.mjs); a part without one stays home
+const PLANS = Object.fromEntries(
+  (["guitar", "receiver"] as Unit[]).map((u) => [
+    u,
+    makePlan([...INFO.values()].filter((p) => p.unit === u && p.away).map((p) => ({ ...(p as Step), name: p.name }))),
+  ]),
+) as Record<Unit, Plan>;
 
 // the transmitter's electronics: the guitar board, the ring, the sensor, the knob, the cap, the pixels
-const ELECTRONICS = /^G_(Board|Ring|LED_)|^G_.*(tof|knob|button|sensor|encoder|switch)/i;
+const ELECTRONICS = /^G_(Board|Ring|LED_|OLED)|^G_.*(tof|knob|button|sensor|encoder|switch)/i;
 export type View = { units: Unit[]; tilt: number; yaw: number; zoom: number; lift?: number; focus?: RegExp; only?: RegExp; ghost?: number };
 // tilt: pi/2 looks straight down; yaw 0: the receiver's front faces you
 export const VIEWS: Record<string, View> = {
@@ -74,13 +69,13 @@ export const VIEWS: Record<string, View> = {
   // the guitar board up close: the screen, the knob, the button and the XIAO's USB-C on top,
   // inside the faint outline of the Mustang it sits in
   board: { units: ["guitar"], tilt: 0.72, yaw: -2.3, zoom: 1.0, focus: ELECTRONICS, only: ELECTRONICS, ghost: 0.6 },
-  stack: { units: ["guitar"], tilt: 0.42, yaw: -1.5, zoom: 1.55 },
+  // low, from the treble side: the layers under the plate show between the plate and the table
+  stack: { units: ["guitar"], tilt: 0.22, yaw: -0.8, zoom: 1.4 },
 };
 
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const span = (p: number, a: number, b: number) => clamp((p - a) / (b - a));
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const land = (t: number) => 1 - Math.pow(1 - easeInOut(t), 1.6);
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _v = new THREE.Vector3();
@@ -94,10 +89,6 @@ type Part = {
   layer: string;
   home: THREE.Vector3;
   box: THREE.Box3; // at home, unit frame, mm
-  offset: THREE.Vector3; // mm from home to its place apart
-  window: [number, number];
-  jitter: THREE.Euler;
-  spin: number;
 };
 
 export class ReinsScene extends HTMLElement {
@@ -108,6 +99,7 @@ export class ReinsScene extends HTMLElement {
   private world = new THREE.Group();
   private units: Record<Unit, THREE.Group> = { guitar: new THREE.Group(), receiver: new THREE.Group() };
   private parts: Part[] = [];
+  private pose: Record<Unit, Map<string, Pose>> = { guitar: new Map(), receiver: new Map() };
   private byName = new Map<string, Part>();
   private ledMats: Record<"G" | "R", THREE.MeshBasicMaterial[]> = { G: [], R: [] };
   private glowMats: Record<"G" | "R", THREE.MeshBasicMaterial[]> = { G: [], R: [] };
@@ -298,14 +290,10 @@ export class ReinsScene extends HTMLElement {
       holder.add(obj);
       pivot.add(holder);
       this.units[unit].add(pivot);
-      const p: Part = {
-        obj: pivot, name: obj.name, unit, layer: info.layer, home: pivot.position.clone(), box,
-        offset: new THREE.Vector3(), window: [0, 0], jitter: new THREE.Euler(), spin: 0,
-      };
+      const p: Part = { obj: pivot, name: obj.name, unit, layer: info.layer, home: pivot.position.clone(), box };
       this.byName.set(p.name, p);
       this.parts.push(p);
     }
-    for (const unit of ["guitar", "receiver"] as Unit[]) this.layout(unit);
     this.addGlows();
     try {
       await this.renderer!.compileAsync(this.scene, this.camera);
@@ -315,68 +303,6 @@ export class ReinsScene extends HTMLElement {
     this.frame();
     requestAnimationFrame(() => this.classList.add("ready"));
     this.resolveReady();
-  }
-
-  // layers apart: each clears the one before it by the gap, outward from the base
-  private layout(unit: Unit) {
-    const L = LAYERS[unit];
-    const mine = this.parts.filter((p) => p.unit === unit);
-    // a case that says how it comes apart (heat/case/v2/web): its explode vectors and its
-    // assembly order, as the real build goes
-    const given = mine.filter((p) => INFO.get(p.name)?.explode);
-    if (given.length) {
-      const orders = [...new Set(given.map((p) => INFO.get(p.name)!.order!))].sort((a, b) => a - b);
-      for (const p of mine) {
-        const info = INFO.get(p.name)!;
-        if (info.explode) {
-          const e = info.explode; // frame mm, z up
-          p.offset.set(e[0], e[2], -e[1]);
-          const k = orders.indexOf(info.order!);
-          p.window = [k / orders.length, Math.min(1, (k + 1.6) / orders.length)];
-        } else {
-          // the LED pucks ride with the light bar
-          const bar = given.find((q) => /LightBar/.test(q.name));
-          if (bar) (p.offset.copy(bar.offset), (p.window = bar.window));
-        }
-        if (/Knob|Button/.test(p.name)) {
-          const r = (k: number) => Math.sin(k * (p.name.length + 3) * 12.9898);
-          p.jitter.set(r(1.3) * 0.35, r(2.1) * 0.8, r(3.7) * 0.35);
-        }
-      }
-      return;
-    }
-    const spanOf = (l: string) => {
-      let lo = Infinity, hi = -Infinity;
-      for (const p of mine) if (p.layer === l) (lo = Math.min(lo, p.box.min.y)), (hi = Math.max(hi, p.box.max.y));
-      return [lo, hi] as const;
-    };
-    const has = (l: string) => mine.some((p) => p.layer === l);
-    const offset = new Map<string, number>();
-    const [bLo, bHi] = spanOf(L.base);
-    let edge = bLo;
-    for (const l of L.below.filter(has)) {
-      const [lo, hi] = spanOf(l);
-      offset.set(l, edge - L.gap - hi);
-      edge = lo + (edge - L.gap - hi);
-    }
-    edge = bHi;
-    for (const l of L.above.filter(has)) {
-      const [lo, hi] = spanOf(l);
-      offset.set(l, edge + L.gap - lo);
-      edge = hi + edge + L.gap - lo;
-    }
-    const seq = [...(unit === "guitar" ? [...L.below, ...L.above] : [...L.above, ...L.below])].filter(has);
-    const win = new Map<string, [number, number]>();
-    seq.forEach((l, k) => win.set(l, [k / seq.length, Math.min(1, (k + 1.4) / seq.length)]));
-    let i = 0;
-    for (const p of mine) {
-      const seed = Math.sin(++i * 12.9898 + (unit === "guitar" ? 3 : 7)) * 43758.5453;
-      const r = (k: number) => Math.sin(seed * k);
-      p.offset.set(0, offset.get(p.layer) ?? 0, 0);
-      p.window = win.get(p.layer) ?? [0, 0];
-      if (/Knob|cap|Button/.test(p.name)) p.jitter.set(r(1.3) * 0.35, r(2.1) * 0.8, r(3.7) * 0.35);
-      if (/Screw_\d/.test(p.name)) p.spin = Math.PI * 4;
-    }
   }
 
   private material(obj: THREE.Object3D, info: PartInfo) {
@@ -497,20 +423,17 @@ export class ReinsScene extends HTMLElement {
     this.explodeNow = ease(this.explodeNow, this._explode, 0.12);
     this.explodeGNow = ease(this.explodeGNow, this._explodeG, 0.12);
 
-    // parts: fly home in their windows; the receiver comes apart again with explode
+    // parts: home in the order of the build during the stage; apart again with explode
     const boxes: Record<Unit, THREE.Box3> = { guitar: new THREE.Box3(), receiver: new THREE.Box3() };
+    poses(PLANS.guitar, span(p, ...STAGE.guitar), easeInOut(this.explodeGNow), this.pose.guitar);
+    poses(PLANS.receiver, span(p, ...STAGE.receiver), easeInOut(this.explodeNow), this.pose.receiver);
     for (const part of this.parts) {
-      const L = LAYERS[part.unit];
-      const asm = span(p, ...L.window);
-      const [w0, w1] = part.window;
-      let apart = part.offset.lengthSq() ? 1 - land(span(asm, w0, w1)) : 0;
-      if (part.unit === "receiver") apart = Math.max(apart, easeInOut(this.explodeNow));
-      else apart = Math.max(apart, easeInOut(this.explodeGNow));
-      part.obj.position.copy(part.home).addScaledVector(part.offset, apart);
-      const turnK = apart * apart;
-      part.obj.quaternion.setFromEuler(_e.set(part.jitter.x * turnK, part.jitter.y * turnK + part.spin * turnK, part.jitter.z * turnK));
+      const at = this.pose[part.unit].get(part.name);
+      part.obj.position.copy(part.home);
+      if (at) part.obj.position.add(_v.set(at.x, at.y, at.z));
+      part.obj.quaternion.setFromAxisAngle(Y, at?.turn ?? 0);
       if (!/_LED_/.test(part.name) && (!tv.focus || tv.focus.test(part.name))) {
-        _b.copy(part.box).translate(_v.copy(part.offset).multiplyScalar(apart));
+        _b.copy(part.box).translate(_v.subVectors(part.obj.position, part.home));
         boxes[part.unit].union(_b);
       }
     }
@@ -528,7 +451,7 @@ export class ReinsScene extends HTMLElement {
     }
     const fieldMoving = this.field?.update(dt) ?? false;
     // the guitar shows once the pickguard is together, and steps back while it is apart
-    const gAsm = span(p, LAYERS.guitar.window[0] + 0.25, LAYERS.guitar.window[1] + 0.05);
+    const gAsm = span(p, STAGE.guitar[0] + 0.25, STAGE.guitar[1] + 0.05);
     this.guitarGhost.opacity = gAsm * (1 - this.explodeGNow) * this.unitAlpha.guitar * (tv.only ? tv.ghost ?? 0 : 1);
     this.guitarGhost.update(dt);
 

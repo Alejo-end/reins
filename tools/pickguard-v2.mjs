@@ -43,7 +43,12 @@ const board = (re) => {
   if (!m) return undefined;
   // module lifts ("M1 (XIAO)": 1.97) by reference, for the plug-in modules on sockets
   const lift = Object.fromEntries(Object.entries(b.module_lift_mm ?? {}).map(([k, v]) => [k.split(' ')[0], v]));
-  return { m, kind: b.glb_to_frame_matrix_rowmajor ? 'glb' : 'kicad', lift, order: b.order, explode: b.explode ?? [0, 0, 0] };
+  // a plug-in module named in module_lift_mm ("J4 (OLED)") comes off the board on its own: the
+  // OLED module rests on the plate top, its pins through the plate into the board's socket, so it
+  // is unplugged before the board goes down (checks.txt, assembly paths). assemble.mjs makes it a
+  // part of its own.
+  const split = Object.fromEntries(Object.keys(b.module_lift_mm ?? {}).filter((k) => /OLED/i.test(k)).map((k) => [k.split(' ')[0], 'OLED']));
+  return { m, kind: b.glb_to_frame_matrix_rowmajor ? 'glb' : 'kicad', lift, split, order: b.order, explode: b.explode ?? [0, 0, 0] };
 };
 const diffuser = list.find((p) => /diffuser/i.test(p.name));
 function stlTop(file) {
@@ -52,8 +57,14 @@ function stlTop(file) {
   for (let i = 0, n = b.readUInt32LE(80); i < n; i++) for (let k = 0; k < 3; k++) top = Math.max(top, b.readFloatLE(84 + i * 50 + 12 + k * 12 + 8));
   return top;
 }
+// The board's own KiCad models of parts that the export also has as STLs, at their real size: the
+// encoder (S1, README.md says to hide it) and the mute switch (SW1: the KiCad model is a taller
+// switch than the B3SN and its plunger reaches 1.3 mm into the button cap). Both would show twice.
+const has = (n) => parts.some((p) => p.name === n);
+const hide = [...(has('Encoder_PEC12R') ? ['S1'] : []), ...(has('Button_B3SN') ? ['SW1'] : [])];
+const guitarBoard = board(/reins-guitar|guitar/i);
 const frame = {
-  guitar: board(/reins-guitar|guitar/i),
+  guitar: guitarBoard && { ...guitarBoard, hide },
   ring: board(/reins-ring|ring/i),
   diffuserTop: diffuser ? stlTop(path.resolve(SRC, diffuser.file)) : undefined,
   diffuserLayer: diffuser ? `step${diffuser.order}` : undefined,

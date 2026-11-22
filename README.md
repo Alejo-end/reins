@@ -21,6 +21,8 @@ BASE=/reins/ npm run build      # the static site in dist/, for GitHub Pages
 - `src/scene.ts`: `<reins-scene>`, both units in three.js. Set `progress` (0 apart, 1
   together), `view` (a name from `VIEWS`), `side` (where the words are), `shift`, `explode`
   (takes the receiver apart again), call `hand(mm)` and `pulse(kind)`.
+- `src/motion.ts`: how the parts of a unit move between home and apart, from the plan in
+  `src/parts.json` (see "Coming apart").
 - `src/ghosts.ts`: the ghost hand and its light cone over the guitar's sensor, and the field
   on the table: the rings of the receiver lid (`heat/case/lid_art.py`) around both sensors,
   meeting halfway. A packet runs through them as a pulse.
@@ -56,7 +58,30 @@ The script stays out of this repository (`tools/private/`, git ignored). It does
    In the same way, if `reins-guitar/pickguard/v2/web/` exists, `tools/pickguard-v2.mjs` reads
    the pickguard from there, with the board transforms and a body outline if it has one.
 4. `tools/assemble.mjs` (glTF-Transform, in `tools/work/npm`) bakes each board into its unit's
-   frame, simplifies it, adds the LED pucks and compresses everything (meshopt). About 0.7 MB.
+   frame, simplifies it, adds the LED pucks and compresses everything (meshopt). About 1 MB.
+   The guitar's OLED module leaves the board as a part of its own (`G_OLED`), and the board's
+   KiCad models of the encoder and the mute switch go, as the export has them as STLs.
+5. `tools/explode.mjs` works out how the parts come apart and go together, writes it into
+   `src/parts.json` and checks it (below). `src/motion.ts` moves the parts by that plan, on the
+   page and in the check.
+
+## Coming apart
+
+Each part goes in along its real way, in the order of the real build: the case goes together
+upside down in the lid, so the light bar, the baffle, the button caps, the boards, the tray, the
+screws and the feet all come out of the lid downwards, and the bezel and the knob upwards. The
+bezel first turns a quarter turn (a bayonet), the jack nuts slide back off their threads and the
+guitar's cell slides out of its sleeve. Apart, the parts stand in layers, each 7 mm clear of every
+part it shares a footprint with. `tools/explode.mjs` finds all of this from the shapes in the model
+(vertical rays 0.2 mm apart through every part) and the export's assembly order; the export's
+own explode vectors only give the nuts their direction.
+
+The check moves every part through the stage, both explode sections and 3000 random mixes of the
+two, and measures the overlap of every pair of parts: exactly along each vertical stretch, at
+0.2 mm or 1 degree steps across and turning. A pair may overlap only as much as at rest (the crush
+ribs and press fits of the CAD checks, and faces that touch in the meshes), and once it starts to
+come apart its overlap may only shrink. `node tools/explode.mjs` plans and checks (about two
+minutes); `node tools/explode.mjs --check` only checks.
 
 ## Checks
 
